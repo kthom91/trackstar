@@ -1,0 +1,19 @@
+meta {
+  name: 1. Get Latest Commit
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{pds_url}}/xrpc/com.atproto.sync.getLatestCommit?did={{did}}
+  body: none
+  auth: none
+}
+
+params:query {
+  did: {{did}}
+}
+
+docs {
+  Returns the CID and revision of the latest commit to the repository MST (Merkle Search Tree).
+}

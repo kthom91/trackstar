@@ -1,221 +1,228 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, SyncJob } from '../../services/api.service';
+import * as Papa from 'papaparse';
+import { PdsRepositoryService } from '../../services/pds-repo.service';
+import { PdsAuthService } from '../../services/pds-auth.service';
+import { DirectMetadataService } from '../../services/direct-metadata.service';
+
+export interface ImportTaskStatus {
+  source: string;
+  total: number;
+  processed: number;
+  inProgress: boolean;
+  success: boolean;
+  errorMessage?: string;
+}
 
 @Component({
   selector: 'app-importers',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="space-y-8">
       
       <!-- Page Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-extrabold text-white font-['Outfit'] tracking-tight">Import & Sync Center</h1>
-        <p class="text-gray-400 text-sm mt-1">Import your historical media data from external services or trigger manual background syncs.</p>
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-extrabold text-white font-['Outfit'] tracking-tight">Direct PDS Importers</h1>
+          <p class="text-gray-400 text-xs sm:text-sm mt-1">
+            Import your media history directly into your AT Protocol Personal Data Server with client-side processing.
+          </p>
+        </div>
+        
+        <div *ngIf="!auth.isAuthenticated()" class="px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium">
+          Connect your PDS account to enable imports
+        </div>
       </div>
 
-      <!-- Importers Grid: 3 Equal Columns on Desktop -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <!-- Importers Grid: 3 Equal Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- StoryGraph CSV Importer -->
-        <div class="glass-card rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+        <!-- 1. StoryGraph CSV Importer -->
+        <div class="bg-[#131b2e]/60 rounded-3xl p-6 border border-white/10 flex flex-col justify-between backdrop-blur-xl shadow-xl">
           <div>
             <div class="flex items-center space-x-3 mb-4">
-              <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                </svg>
+              <div class="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center text-lg">
+                📖
               </div>
               <div>
-                <h3 class="text-lg font-bold text-white font-['Outfit']">StoryGraph Importer</h3>
-                <p class="text-xs text-gray-400">Import books via StoryGraph CSV export file</p>
+                <h3 class="text-base font-bold text-white font-['Outfit']">StoryGraph CSV</h3>
+                <p class="text-[11px] text-gray-400">Books export from StoryGraph</p>
               </div>
             </div>
 
-            <p class="text-xs text-gray-300 mb-4 bg-white/5 p-3 rounded-xl border border-white/5">
-              Maps statuses (<code class="text-teal-300">read</code>, <code class="text-teal-300">currently-reading</code>, <code class="text-teal-300">to-read</code>), star ratings, dates, and enriches metadata via Open Library.
+            <p class="text-xs text-gray-300 mb-4 bg-white/5 p-3 rounded-xl border border-white/5 leading-relaxed">
+              Parses <code class="text-teal-300">read</code>, <code class="text-teal-300">currently-reading</code>, and <code class="text-teal-300">to-read</code> shelves with ISBNs, 1-5 ratings, and reviews.
             </p>
 
-            <div class="border-2 border-dashed border-white/20 hover:border-teal-500/50 rounded-xl p-6 text-center cursor-pointer transition-colors relative bg-white/5">
+            <div class="border-2 border-dashed border-white/20 hover:border-teal-500/50 rounded-2xl p-6 text-center cursor-pointer transition-colors relative bg-white/5">
               <input type="file" 
                      accept=".csv"
+                     [disabled]="!auth.isAuthenticated() || isImporting"
                      (change)="onStorygraphFileSelected($event)" 
-                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-              <svg class="w-8 h-8 text-teal-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+              <svg class="w-7 h-7 text-teal-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
               </svg>
-              <span class="text-xs font-medium text-gray-300">Choose StoryGraph CSV or drag & drop</span>
+              <span class="text-xs font-medium text-gray-300">Upload StoryGraph CSV</span>
             </div>
           </div>
 
-          <div *ngIf="storygraphJob" class="mt-4 p-3 rounded-xl text-xs flex items-center justify-between"
-               [class]="storygraphJob.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'">
-            <span>Status: {{ storygraphJob.status }} ({{ storygraphJob.records_processed }} processed)</span>
+          <div *ngIf="storygraphStatus" class="mt-4 p-3.5 rounded-xl text-xs"
+               [ngClass]="storygraphStatus.success ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : (storygraphStatus.inProgress ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20')">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-semibold">{{ storygraphStatus.inProgress ? 'Importing to PDS...' : (storygraphStatus.success ? 'Import Complete' : 'Import Error') }}</span>
+              <span class="font-mono">{{ storygraphStatus.processed }} / {{ storygraphStatus.total }}</span>
+            </div>
+            <div *ngIf="storygraphStatus.inProgress" class="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-teal-400 h-1.5 transition-all duration-200" [style.width.%]="(storygraphStatus.processed / (storygraphStatus.total || 1)) * 100"></div>
+            </div>
           </div>
         </div>
 
-        <!-- Letterboxd CSV / RSS Importer -->
-        <div class="glass-card rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
+        <!-- 2. Letterboxd CSV Importer -->
+        <div class="bg-[#131b2e]/60 rounded-3xl p-6 border border-white/10 flex flex-col justify-between backdrop-blur-xl shadow-xl">
           <div>
             <div class="flex items-center space-x-3 mb-4">
-              <div class="w-10 h-10 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
-                </svg>
+              <div class="w-10 h-10 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center text-lg">
+                🎬
               </div>
               <div>
-                <h3 class="text-lg font-bold text-white font-['Outfit']">Letterboxd Importer</h3>
-                <p class="text-xs text-gray-400">Import movies via CSV export or RSS feed</p>
+                <h3 class="text-base font-bold text-white font-['Outfit']">Letterboxd CSV</h3>
+                <p class="text-[11px] text-gray-400">Diary / Watchlist CSVs</p>
               </div>
             </div>
 
-            <p class="text-xs text-gray-300 mb-4 bg-white/5 p-3 rounded-xl border border-white/5">
-              Upload <code class="text-indigo-300">diary.csv</code> or <code class="text-indigo-300">watchlist.csv</code>. Enriches movies with TMDB posters, ratings, dates, and direct Letterboxd URIs.
+            <p class="text-xs text-gray-300 mb-4 bg-white/5 p-3 rounded-xl border border-white/5 leading-relaxed">
+              Upload <code class="text-orange-300">diary.csv</code>, <code class="text-orange-300">watched.csv</code>, or <code class="text-orange-300">watchlist.csv</code> to import film diary entries.
             </p>
 
-
-            <div class="space-y-3">
-              <div class="border-2 border-dashed border-white/20 hover:border-orange-500/50 rounded-xl p-3.5 text-center cursor-pointer transition-colors relative bg-white/5">
-                <input type="file" 
-                       accept=".csv"
-                       (change)="onLetterboxdFileSelected($event)" 
-                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                <span class="text-xs font-medium text-gray-300">Upload Letterboxd CSV</span>
-              </div>
-
-              <button (click)="triggerLetterboxdRss()"
-                      class="w-full py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium transition-colors shadow-lg shadow-orange-600/20">
-                Poll Letterboxd RSS Feed
-              </button>
-            </div>
-          </div>
-
-          <div *ngIf="letterboxdJob" class="mt-4 p-3 rounded-xl text-xs flex items-center justify-between"
-               [class]="letterboxdJob.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'">
-            <span>Status: {{ letterboxdJob.status }} ({{ letterboxdJob.records_processed }} processed)</span>
-          </div>
-        </div>
-
-        <!-- setlist.fm Concert Connector -->
-        <div class="glass-card rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center space-x-3 mb-4">
-              <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 .895-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 .895-2 3-2 3 .895 3 2zM9 10l12-3"></path>
-                </svg>
-              </div>
-              <div>
-                <h3 class="text-lg font-bold text-white font-['Outfit']">setlist.fm Connector</h3>
-                <p class="text-xs text-gray-400">Sync live concert attendance history</p>
-              </div>
-            </div>
-
-
-            <p class="text-xs text-gray-300 mb-6 bg-white/5 p-3 rounded-xl border border-white/5">
-              Syncs attended concerts, dates, venues, setlists, and band artwork automatically from setlist.fm.
-            </p>
-
-            <button (click)="triggerSetlistFmSync()"
-                    [disabled]="isSetlistSyncing"
-                    class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-medium shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center space-x-2">
-              <svg *ngIf="isSetlistSyncing" class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            <div class="border-2 border-dashed border-white/20 hover:border-orange-500/50 rounded-2xl p-6 text-center cursor-pointer transition-colors relative bg-white/5">
+              <input type="file" 
+                     accept=".csv"
+                     [disabled]="!auth.isAuthenticated() || isImporting"
+                     (change)="onLetterboxdFileSelected($event)" 
+                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+              <svg class="w-7 h-7 text-orange-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
               </svg>
-              <span>{{ isSetlistSyncing ? 'Syncing Concerts...' : 'Sync Attended Concerts' }}</span>
+              <span class="text-xs font-medium text-gray-300">Upload Letterboxd CSV</span>
+            </div>
+          </div>
+
+          <div *ngIf="letterboxdStatus" class="mt-4 p-3.5 rounded-xl text-xs"
+               [ngClass]="letterboxdStatus.success ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : (letterboxdStatus.inProgress ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20')">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-semibold">{{ letterboxdStatus.inProgress ? 'Importing to PDS...' : (letterboxdStatus.success ? 'Import Complete' : 'Import Error') }}</span>
+              <span class="font-mono">{{ letterboxdStatus.processed }} / {{ letterboxdStatus.total }}</span>
+            </div>
+            <div *ngIf="letterboxdStatus.inProgress" class="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-orange-400 h-1.5 transition-all duration-200" [style.width.%]="(letterboxdStatus.processed / (letterboxdStatus.total || 1)) * 100"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. setlist.fm Direct API Connector -->
+        <div class="bg-[#131b2e]/60 rounded-3xl p-6 border border-white/10 flex flex-col justify-between backdrop-blur-xl shadow-xl">
+          <div>
+            <div class="flex items-center space-x-3 mb-4">
+              <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-lg">
+                🎟️
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-white font-['Outfit']">setlist.fm Connector</h3>
+                <p class="text-[11px] text-gray-400">Direct API sync for attended concerts</p>
+              </div>
+            </div>
+
+            <p class="text-xs text-gray-300 mb-4 bg-white/5 p-3 rounded-xl border border-white/5 leading-relaxed">
+              Sync attended live concerts, dates, venues, setlists, and band artwork directly from setlist.fm.
+            </p>
+
+            <!-- API Credentials Inputs (Stored in LocalStorage) -->
+            <div class="space-y-3 mb-4">
+              <div>
+                <label for="setlist-username" class="block text-[10px] font-semibold uppercase text-gray-400 mb-1 tracking-wider">setlist.fm Username</label>
+                <input id="setlist-username"
+                       type="text" 
+                       [(ngModel)]="setlistUserId" 
+                       (change)="onSetlistCredentialsChange()"
+                       placeholder="e.g. your_setlist_user"
+                       class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-white/10 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-emerald-500 transition-all font-mono" />
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label for="setlist-api-key" class="block text-[10px] font-semibold uppercase text-gray-400 tracking-wider">API Key</label>
+                  <a href="https://www.setlist.fm/settings/api" target="_blank" rel="noopener noreferrer" class="text-[10px] text-emerald-400 hover:underline">Get Free Key ↗</a>
+                </div>
+                <input id="setlist-api-key"
+                       type="password" 
+                       [(ngModel)]="setlistApiKey" 
+                       (change)="onSetlistCredentialsChange()"
+                       placeholder="Enter setlist.fm API key..."
+                       class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-white/10 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-emerald-500 transition-all font-mono" />
+              </div>
+            </div>
+
+            <button (click)="syncSetlistFm()"
+                    [disabled]="!auth.isAuthenticated() || isImporting || !setlistUserId.trim() || !setlistApiKey.trim()"
+                    class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center space-x-2">
+              <div *ngIf="setlistStatus?.inProgress" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>{{ setlistStatus?.inProgress ? 'Syncing Concerts...' : 'Sync Attended Concerts' }}</span>
             </button>
           </div>
 
-          <div *ngIf="setlistJob" class="mt-4 p-3 rounded-xl text-xs flex items-center justify-between"
-               [class]="setlistJob.status === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'">
-            <span>Status: {{ setlistJob.status }} ({{ setlistJob.records_processed }} processed)</span>
+          <div *ngIf="setlistStatus" class="mt-4 p-3.5 rounded-xl text-xs"
+               [ngClass]="setlistStatus.success ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : (setlistStatus.inProgress ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20')">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-semibold">{{ setlistStatus.inProgress ? 'Syncing to PDS...' : (setlistStatus.success ? 'Sync Complete' : 'Sync Error') }}</span>
+              <span class="font-mono">{{ setlistStatus.processed }} / {{ setlistStatus.total }}</span>
+            </div>
+            <div *ngIf="setlistStatus.inProgress" class="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-emerald-400 h-1.5 transition-all duration-200" [style.width.%]="(setlistStatus.processed / (setlistStatus.total || 1)) * 100"></div>
+            </div>
+            <p *ngIf="setlistStatus.errorMessage" class="text-[11px] text-rose-300 mt-1">
+              {{ setlistStatus.errorMessage }}
+            </p>
           </div>
         </div>
 
-      </div>
-
-      <!-- Sync Job History Table -->
-      <div class="glass-card rounded-2xl p-6 border border-white/10">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-white font-['Outfit']">Sync & Import Execution History</h2>
-          <button (click)="loadSyncJobs()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">
-            Refresh Status
-          </button>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr class="border-b border-white/10 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                <th class="py-3 px-4">Connector</th>
-                <th class="py-3 px-4">Status</th>
-                <th class="py-3 px-4">Records</th>
-                <th class="py-3 px-4">Triggered At</th>
-                <th class="py-3 px-4">Details</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-white/5">
-              <tr *ngFor="let job of jobs" class="hover:bg-white/5 transition-colors">
-                <td class="py-3.5 px-4 font-medium text-white capitalize">
-                  {{ job.connector_name.replace('_', ' ') }}
-                </td>
-                <td class="py-3.5 px-4">
-                  <span [class]="getJobBadgeClass(job.status)" class="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
-                    {{ job.status }}
-                  </span>
-                </td>
-                <td class="py-3.5 px-4 text-gray-300 font-mono">{{ job.records_processed }}</td>
-                <td class="py-3.5 px-4 text-gray-400 text-xs">{{ job.triggered_at | date:'medium' }}</td>
-                <td class="py-3.5 px-4 text-gray-400 text-xs truncate max-w-xs">
-                  {{ job.error_message || 'OK' }}
-                </td>
-              </tr>
-              <tr *ngIf="jobs.length === 0">
-                <td colspan="5" class="py-8 text-center text-gray-500">No sync jobs have run yet.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
 
     </div>
   `
 })
 export class ImportersComponent implements OnInit {
-  private api = inject(ApiService);
+  auth = inject(PdsAuthService);
+  repo = inject(PdsRepositoryService);
+  metadataService = inject(DirectMetadataService);
 
-  jobs: SyncJob[] = [];
-  storygraphJob?: SyncJob;
-  letterboxdJob?: SyncJob;
-  setlistJob?: SyncJob;
+  isImporting = false;
 
-  isSetlistSyncing = false;
+  setlistUserId = '';
+  setlistApiKey = '';
+
+  storygraphStatus?: ImportTaskStatus;
+  letterboxdStatus?: ImportTaskStatus;
+  setlistStatus?: ImportTaskStatus;
 
   ngOnInit() {
-    this.loadSyncJobs();
+    this.setlistUserId = this.metadataService.getSetlistUserId();
+    this.setlistApiKey = this.metadataService.getSetlistApiKey();
   }
 
-  loadSyncJobs() {
-    this.api.getSyncJobs().subscribe({
-      next: (data) => this.jobs = data,
-      error: (err) => console.error('Failed to load sync jobs:', err)
-    });
+  onSetlistCredentialsChange() {
+    this.metadataService.setSetlistUserId(this.setlistUserId);
+    this.metadataService.setSetlistApiKey(this.setlistApiKey);
   }
 
   onStorygraphFileSelected(event: Event) {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
       const file = target.files[0];
-      this.api.uploadStorygraphCsv(file).subscribe({
-        next: (job) => {
-          this.storygraphJob = job;
-          this.loadSyncJobs();
-        },
-        error: (err) => console.error('StoryGraph upload error:', err)
-      });
+      this.parseStoryGraphCsv(file);
     }
   }
 
@@ -223,47 +230,200 @@ export class ImportersComponent implements OnInit {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
       const file = target.files[0];
-      this.api.uploadLetterboxdCsv(file).subscribe({
-        next: (job) => {
-          this.letterboxdJob = job;
-          this.loadSyncJobs();
-        },
-        error: (err) => console.error('Letterboxd upload error:', err)
-      });
+      this.parseLetterboxdCsv(file);
     }
   }
 
-  triggerLetterboxdRss() {
-    this.api.pollLetterboxdRss().subscribe({
-      next: (job) => {
-        this.letterboxdJob = job;
-        this.loadSyncJobs();
-      },
-      error: (err) => console.error('Letterboxd RSS error:', err)
-    });
+  async syncSetlistFm() {
+    if (!this.setlistUserId.trim() || !this.setlistApiKey.trim() || !this.auth.isAuthenticated()) return;
+    
+    this.onSetlistCredentialsChange();
+    this.isImporting = true;
+    this.setlistStatus = { source: 'setlist.fm', total: 0, processed: 0, inProgress: true, success: false };
+
+    try {
+      let page = 1;
+      let totalConcerts = 0;
+      let totalPages = 1;
+
+      while (page <= totalPages) {
+        const res = await this.metadataService.fetchSetlistFmPage(this.setlistUserId, this.setlistApiKey, page);
+        if (!res || !res.setlist) break;
+
+        totalConcerts = res.total || res.setlist.length;
+        const itemsPerPage = res.itemsPerPage || 20;
+        totalPages = Math.ceil(totalConcerts / itemsPerPage);
+        this.setlistStatus.total = totalConcerts;
+
+        for (const concert of res.setlist) {
+          try {
+            const artist = concert.artist?.name || 'Unknown Artist';
+            const venue = concert.venue?.name || 'Venue';
+            const city = concert.venue?.city?.name || '';
+            const country = concert.venue?.city?.country?.name || '';
+            const rawDate = concert.eventDate || ''; // "23-08-2024"
+            const url = concert.url || '';
+            const setlistId = concert.id || '';
+
+            // Format date to ISO
+            let isoDate: string | undefined = undefined;
+            if (rawDate && rawDate.includes('-')) {
+              const [d, m, y] = rawDate.split('-');
+              isoDate = `${y}-${m}-${d}T00:00:00Z`;
+            }
+
+            const title = `${artist} @ ${venue}`;
+            const mediaId = `setlist:${setlistId}`;
+
+            await this.repo.createLog({
+              mediaType: 'concert',
+              title: title,
+              status: 'completed',
+              completedAt: isoDate,
+              mediaItemId: mediaId,
+              metadataJson: {
+                artist: artist,
+                venue: venue,
+                city: city,
+                country: country,
+                setlist_url: url
+              }
+            });
+
+            this.setlistStatus.processed++;
+          } catch (itemErr) {
+            console.warn('Error saving concert setlist to PDS:', itemErr);
+          }
+        }
+
+        page++;
+      }
+
+      this.setlistStatus.inProgress = false;
+      this.setlistStatus.success = true;
+      await this.repo.syncFromPds();
+    } catch (err: any) {
+      console.error('Failed to sync setlist.fm:', err);
+      this.setlistStatus.inProgress = false;
+      this.setlistStatus.errorMessage = err?.message || 'Failed to connect to setlist.fm. Please verify your credentials.';
+    } finally {
+      this.isImporting = false;
+    }
   }
 
-  triggerSetlistFmSync() {
-    this.isSetlistSyncing = true;
-    this.api.syncSetlistFm().subscribe({
-      next: (job) => {
-        this.setlistJob = job;
-        this.isSetlistSyncing = false;
-        this.loadSyncJobs();
+  private parseStoryGraphCsv(file: File) {
+    this.isImporting = true;
+    this.storygraphStatus = { source: 'StoryGraph', total: 0, processed: 0, inProgress: true, success: false };
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const rows = results.data as any[];
+        this.storygraphStatus!.total = rows.length;
+
+        for (const row of rows) {
+          try {
+            const title = row['Title'] || row['title'];
+            if (!title) continue;
+
+            const author = row['Authors'] || row['Author'] || '';
+            const isbn = row['ISBN/UID'] || '';
+            const statusRaw = (row['Read Status'] || '').toLowerCase();
+            
+            let status = 'completed';
+            if (statusRaw.includes('to-read') || statusRaw.includes('wishlist')) {
+              status = 'want_to_consume';
+            } else if (statusRaw.includes('currently-reading')) {
+              status = 'consuming';
+            }
+
+            const rating = row['Star Rating'] ? Math.round(parseFloat(row['Star Rating'])) : undefined;
+            const review = row['Review'] || undefined;
+            const dateRead = row['Last Date Read'] || row['Date Added'] || undefined;
+
+            await this.repo.createLog({
+              mediaType: 'book',
+              title: title.trim(),
+              status: status,
+              rating: rating && rating >= 1 && rating <= 5 ? rating : undefined,
+              review: review,
+              completedAt: dateRead ? new Date(dateRead).toISOString() : undefined,
+              metadataJson: {
+                author: author,
+                isbn: isbn
+              }
+            });
+
+            this.storygraphStatus!.processed++;
+          } catch (err) {
+            console.warn('Error importing row:', err);
+          }
+        }
+
+        this.storygraphStatus!.inProgress = false;
+        this.storygraphStatus!.success = true;
+        this.isImporting = false;
+        await this.repo.syncFromPds();
       },
       error: (err) => {
-        console.error('setlist.fm sync error:', err);
-        this.isSetlistSyncing = false;
+        console.error('CSV parse error:', err);
+        this.storygraphStatus!.inProgress = false;
+        this.storygraphStatus!.errorMessage = err.message;
+        this.isImporting = false;
       }
     });
   }
 
-  getJobBadgeClass(status: string): string {
-    switch (status) {
-      case 'success': return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-      case 'running': return 'bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse';
-      case 'failed': return 'bg-red-500/20 text-red-400 border border-red-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
-    }
+  private parseLetterboxdCsv(file: File) {
+    this.isImporting = true;
+    this.letterboxdStatus = { source: 'Letterboxd', total: 0, processed: 0, inProgress: true, success: false };
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const rows = results.data as any[];
+        this.letterboxdStatus!.total = rows.length;
+
+        for (const row of rows) {
+          try {
+            const title = row['Name'] || row['Title'] || '';
+            if (!title) continue;
+
+            const year = row['Year'] || '';
+            const letterboxdUri = row['Letterboxd URI'] || '';
+            const rating = row['Rating'] ? Math.round(parseFloat(row['Rating'])) : undefined;
+            const dateWatched = row['Watched Date'] || row['Date'] || undefined;
+
+            let status = 'completed';
+            if (file.name.toLowerCase().includes('watchlist')) {
+              status = 'want_to_consume';
+            }
+
+            await this.repo.createLog({
+              mediaType: 'movie',
+              title: title.trim(),
+              status: status,
+              rating: rating && rating >= 1 && rating <= 5 ? rating : undefined,
+              completedAt: dateWatched ? new Date(dateWatched).toISOString() : undefined,
+              metadataJson: {
+                year: year,
+                letterboxd_url: letterboxdUri
+              }
+            });
+
+            this.letterboxdStatus!.processed++;
+          } catch (err) {
+            console.warn('Error importing row:', err);
+          }
+        }
+
+        this.letterboxdStatus!.inProgress = false;
+        this.letterboxdStatus!.success = true;
+        this.isImporting = false;
+        await this.repo.syncFromPds();
+      }
+    });
   }
 }

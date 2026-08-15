@@ -1,0 +1,73 @@
+meta {
+  name: 3. Add Attended Concert Test
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{pds_url}}/xrpc/com.atproto.repo.applyWrites
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessJwt}}
+}
+
+body:json {
+  {
+    "repo": "{{did}}",
+    "writes": [
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "concert_postal_service_msg",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "concert:postal_service_death_cab_msg_2023",
+          "mediaType": "concert",
+          "title": "The Postal Service & Death Cab for Cutie",
+          "metadataJson": {
+            "artist": "The Postal Service & Death Cab for Cutie",
+            "creator": "The Postal Service & Death Cab for Cutie",
+            "venue": "Madison Square Garden",
+            "city": "New York",
+            "state": "NY",
+            "country": "US",
+            "year": 2023,
+            "coverUrl": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-02T20:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_concert_postal_service_attended",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "concert:postal_service_death_cab_msg_2023",
+          "status": "completed",
+          "rating": 5,
+          "review": "20th Anniversary Tour performing Give Up and Transatlanticism back to back. The atmosphere in the garden was electric.",
+          "loggedAt": "2026-08-02T23:30:00.000Z",
+          "completedAt": "2026-08-02T23:30:00.000Z",
+          "source": "trackstar"
+        }
+      }
+    ]
+  }
+}
+
+docs {
+  ### 🎟️ Add Attended Concert Test
+  
+  Executes an atomic insert via `com.atproto.repo.applyWrites` into your PDS repository.
+  
+  Creates an attended (completed) concert with both media catalog (`app.trackstar.media`) and user log (`app.trackstar.log`) records:
+  
+  - **Attended Concert (`completed`)**:
+    - *The Postal Service & Death Cab for Cutie* at Madison Square Garden, New York, NY
+    - Status: `completed` (5-star rating, review, venue details, completedAt date; shows on Dashboard timeline)
+}

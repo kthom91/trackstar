@@ -1,0 +1,26 @@
+meta {
+  name: 4. Refresh Session
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{pds_url}}/xrpc/com.atproto.server.refreshSession
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{refreshJwt}}
+}
+
+script:post-response {
+  if (res.body && res.body.accessJwt) {
+    bru.setEnvVar("accessJwt", res.body.accessJwt);
+    bru.setEnvVar("refreshJwt", res.body.refreshJwt);
+  }
+}
+
+docs {
+  Refreshes the accessJwt token using the refreshJwt token.
+}

@@ -1,0 +1,21 @@
+meta {
+  name: 3. List TrackStar Logs
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{pds_url}}/xrpc/com.atproto.repo.listRecords?repo={{did}}&collection=app.trackstar.log&limit=50
+  body: none
+  auth: none
+}
+
+params:query {
+  repo: {{did}}
+  collection: app.trackstar.log
+  limit: 50
+}
+
+docs {
+  Lists all `app.trackstar.log` user diary and rating records from the PDS.
+}

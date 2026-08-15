@@ -1,0 +1,21 @@
+meta {
+  name: 1. List TrackStar Media Items
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{pds_url}}/xrpc/com.atproto.repo.listRecords?repo={{did}}&collection=app.trackstar.media&limit=50
+  body: none
+  auth: none
+}
+
+params:query {
+  repo: {{did}}
+  collection: app.trackstar.media
+  limit: 50
+}
+
+docs {
+  Lists all `app.trackstar.media` records stored in the repository.
+}

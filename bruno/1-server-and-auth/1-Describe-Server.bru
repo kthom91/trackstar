@@ -1,0 +1,15 @@
+meta {
+  name: 1. Describe Server
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{pds_url}}/xrpc/com.atproto.server.describeServer
+  body: none
+  auth: none
+}
+
+docs {
+  Returns information about the PDS server including available domain names and invite code requirements.
+}

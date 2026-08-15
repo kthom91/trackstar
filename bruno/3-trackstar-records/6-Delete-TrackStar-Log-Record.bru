@@ -1,0 +1,27 @@
+meta {
+  name: 6. Delete TrackStar Log Record
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{pds_url}}/xrpc/com.atproto.repo.deleteRecord
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessJwt}}
+}
+
+body:json {
+  {
+    "repo": "{{did}}",
+    "collection": "app.trackstar.log",
+    "rkey": "test_log_entry_001"
+  }
+}
+
+docs {
+  Deletes a record from `app.trackstar.log` by rkey.
+}

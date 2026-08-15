@@ -1,0 +1,142 @@
+meta {
+  name: 1. Add Books Test Batch (In-Progress, Want-to-Read, Completed)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{pds_url}}/xrpc/com.atproto.repo.applyWrites
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessJwt}}
+}
+
+body:json {
+  {
+    "repo": "{{did}}",
+    "writes": [
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "book_project_hail_mary",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "isbn:9780593135204",
+          "mediaType": "book",
+          "title": "Project Hail Mary",
+          "metadataJson": {
+            "author": "Andy Weir",
+            "creator": "Andy Weir",
+            "isbn": "9780593135204",
+            "year": 2021,
+            "coverUrl": "https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-14T09:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_book_hail_mary_in_progress",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "isbn:9780593135204",
+          "status": "consuming",
+          "loggedAt": "2026-08-14T09:00:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "book_klara_and_the_sun",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "isbn:9780593318171",
+          "mediaType": "book",
+          "title": "Klara and the Sun",
+          "metadataJson": {
+            "author": "Kazuo Ishiguro",
+            "creator": "Kazuo Ishiguro",
+            "isbn": "9780593318171",
+            "year": 2021,
+            "coverUrl": "https://covers.openlibrary.org/b/isbn/9780593318171-L.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-12T11:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_book_klara_want_to_read",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "isbn:9780593318171",
+          "status": "want_to_consume",
+          "loggedAt": "2026-08-12T11:00:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "book_tomorrow_and_tomorrow",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "isbn:9780593321201",
+          "mediaType": "book",
+          "title": "Tomorrow, and Tomorrow, and Tomorrow",
+          "metadataJson": {
+            "author": "Gabrielle Zevin",
+            "creator": "Gabrielle Zevin",
+            "isbn": "9780593321201",
+            "year": 2022,
+            "coverUrl": "https://covers.openlibrary.org/b/isbn/9780593321201-L.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-10T14:30:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_book_tomorrow_completed",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "isbn:9780593321201",
+          "status": "completed",
+          "rating": 5,
+          "review": "An extraordinary journey through friendship, creative collaboration, and video games spanning three decades.",
+          "loggedAt": "2026-08-10T14:30:00.000Z",
+          "completedAt": "2026-08-10T14:30:00.000Z",
+          "source": "trackstar"
+        }
+      }
+    ]
+  }
+}
+
+docs {
+  ### 📚 Add Books Test Batch (In-Progress, Want-to-Read, Completed)
+  
+  Executes an atomic batch insert via `com.atproto.repo.applyWrites` into your PDS repository.
+  
+  In a single request, creates 3 books with corresponding media catalog (`app.trackstar.media`) and user log (`app.trackstar.log`) records:
+  
+  1. **In-Progress Book (`consuming`)**:
+     - *Project Hail Mary* by Andy Weir
+     - Status: `consuming` (shows in "Currently Consuming")
+  
+  2. **Want-to-Read Book (`want_to_consume`)**:
+     - *Klara and the Sun* by Kazuo Ishiguro
+     - Status: `want_to_consume` (shows on "/want-to-consume" shelf)
+  
+  3. **Completed Book (`completed`)**:
+     - *Tomorrow, and Tomorrow, and Tomorrow* by Gabrielle Zevin
+     - Status: `completed` (5-star rating, review, completedAt date; shows on Dashboard timeline)
+}

@@ -1,0 +1,104 @@
+meta {
+  name: 2. Add Movies Test Batch (Completed & Want-to-Watch)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{pds_url}}/xrpc/com.atproto.repo.applyWrites
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessJwt}}
+}
+
+body:json {
+  {
+    "repo": "{{did}}",
+    "writes": [
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "movie_interstellar_2014",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "movie:interstellar_2014",
+          "mediaType": "movie",
+          "title": "Interstellar",
+          "metadataJson": {
+            "creator": "Christopher Nolan",
+            "director": "Christopher Nolan",
+            "year": 2014,
+            "coverUrl": "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-08T20:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_movie_interstellar_completed",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "movie:interstellar_2014",
+          "status": "completed",
+          "rating": 5,
+          "review": "A breathtaking cinematic masterpiece. The docking scene combined with Hans Zimmer's organ score remains unforgettable.",
+          "loggedAt": "2026-08-08T22:15:00.000Z",
+          "completedAt": "2026-08-08T22:15:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "movie_past_lives_2023",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "movie:past_lives_2023",
+          "mediaType": "movie",
+          "title": "Past Lives",
+          "metadataJson": {
+            "creator": "Celine Song",
+            "director": "Celine Song",
+            "year": 2023,
+            "coverUrl": "https://image.tmdb.org/t/p/w500/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-11T16:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_movie_past_lives_want_to_watch",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "movie:past_lives_2023",
+          "status": "want_to_consume",
+          "loggedAt": "2026-08-11T16:00:00.000Z",
+          "source": "trackstar"
+        }
+      }
+    ]
+  }
+}
+
+docs {
+  ### 🎬 Add Movies Test Batch (Completed & Want-to-Watch)
+  
+  Executes an atomic batch insert via `com.atproto.repo.applyWrites` into your PDS repository.
+  
+  In a single request, creates 2 movies with corresponding media catalog (`app.trackstar.media`) and user log (`app.trackstar.log`) records:
+  
+  1. **Completed Movie (`completed`)**:
+     - *Interstellar* (2014) directed by Christopher Nolan
+     - Status: `completed` (5-star rating, review, completedAt date; shows on Dashboard timeline)
+  
+  2. **Want-to-Watch Movie (`want_to_consume`)**:
+     - *Past Lives* (2023) directed by Celine Song
+     - Status: `want_to_consume` (shows on "/want-to-consume" shelf under Movies)
+}

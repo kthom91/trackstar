@@ -1,0 +1,347 @@
+meta {
+  name: 9. Seed Variety TrackStar Records (Test All Features)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{pds_url}}/xrpc/com.atproto.repo.applyWrites
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessJwt}}
+}
+
+body:json {
+  {
+    "repo": "{{did}}",
+    "writes": [
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "book_tomorrow_and_tomorrow",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "isbn:9780593321201",
+          "mediaType": "book",
+          "title": "Tomorrow, and Tomorrow, and Tomorrow",
+          "metadataJson": {
+            "author": "Gabrielle Zevin",
+            "creator": "Gabrielle Zevin",
+            "isbn": "9780593321201",
+            "year": 2022,
+            "coverUrl": "https://covers.openlibrary.org/b/isbn/9780593321201-L.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-10T14:30:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_book_tomorrow",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "isbn:9780593321201",
+          "status": "completed",
+          "rating": 5,
+          "review": "An extraordinary journey through friendship, creative collaboration, and video games spanning three decades.",
+          "loggedAt": "2026-08-10T14:30:00.000Z",
+          "completedAt": "2026-08-10T14:30:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "book_project_hail_mary",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "isbn:9780593135204",
+          "mediaType": "book",
+          "title": "Project Hail Mary",
+          "metadataJson": {
+            "author": "Andy Weir",
+            "creator": "Andy Weir",
+            "isbn": "9780593135204",
+            "year": 2021,
+            "coverUrl": "https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-14T09:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_book_hail_mary",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "isbn:9780593135204",
+          "status": "consuming",
+          "loggedAt": "2026-08-14T09:00:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "book_klara_and_the_sun",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "isbn:9780593318171",
+          "mediaType": "book",
+          "title": "Klara and the Sun",
+          "metadataJson": {
+            "author": "Kazuo Ishiguro",
+            "creator": "Kazuo Ishiguro",
+            "isbn": "9780593318171",
+            "year": 2021,
+            "coverUrl": "https://covers.openlibrary.org/b/isbn/9780593318171-L.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-12T11:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_book_klara",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "isbn:9780593318171",
+          "status": "want_to_consume",
+          "loggedAt": "2026-08-12T11:00:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "movie_interstellar_2014",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "movie:interstellar_2014",
+          "mediaType": "movie",
+          "title": "Interstellar",
+          "metadataJson": {
+            "creator": "Christopher Nolan",
+            "director": "Christopher Nolan",
+            "year": 2014,
+            "coverUrl": "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-08T20:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_movie_interstellar",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "movie:interstellar_2014",
+          "status": "completed",
+          "rating": 5,
+          "review": "A breathtaking cinematic masterpiece. The docking scene combined with Hans Zimmer's organ score remains unforgettable.",
+          "loggedAt": "2026-08-08T22:15:00.000Z",
+          "completedAt": "2026-08-08T22:15:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "movie_dune_part_two_2024",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "movie:dune_part_two_2024",
+          "mediaType": "movie",
+          "title": "Dune: Part Two",
+          "metadataJson": {
+            "creator": "Denis Villeneuve",
+            "director": "Denis Villeneuve",
+            "year": 2024,
+            "coverUrl": "https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-14T19:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_movie_dune_2",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "movie:dune_part_two_2024",
+          "status": "consuming",
+          "loggedAt": "2026-08-14T20:00:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "movie_past_lives_2023",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "movie:past_lives_2023",
+          "mediaType": "movie",
+          "title": "Past Lives",
+          "metadataJson": {
+            "creator": "Celine Song",
+            "director": "Celine Song",
+            "year": 2023,
+            "coverUrl": "https://image.tmdb.org/t/p/w500/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-11T16:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_movie_past_lives",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "movie:past_lives_2023",
+          "status": "want_to_consume",
+          "loggedAt": "2026-08-11T16:00:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "concert_postal_service_msg",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "concert:postal_service_death_cab_msg_2023",
+          "mediaType": "concert",
+          "title": "The Postal Service & Death Cab for Cutie",
+          "metadataJson": {
+            "artist": "The Postal Service & Death Cab for Cutie",
+            "creator": "The Postal Service & Death Cab for Cutie",
+            "venue": "Madison Square Garden",
+            "city": "New York",
+            "state": "NY",
+            "country": "US",
+            "year": 2023,
+            "coverUrl": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-02T20:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_concert_postal_service",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "concert:postal_service_death_cab_msg_2023",
+          "status": "completed",
+          "rating": 5,
+          "review": "20th Anniversary Tour performing Give Up and Transatlanticism back to back. The atmosphere in the garden was electric.",
+          "loggedAt": "2026-08-02T23:30:00.000Z",
+          "completedAt": "2026-08-02T23:30:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "concert_lcd_soundsystem_bk_steel",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "concert:lcd_soundsystem_brooklyn_steel",
+          "mediaType": "concert",
+          "title": "LCD Soundsystem",
+          "metadataJson": {
+            "artist": "LCD Soundsystem",
+            "creator": "LCD Soundsystem",
+            "venue": "Brooklyn Steel",
+            "city": "Brooklyn",
+            "state": "NY",
+            "country": "US",
+            "year": 2024,
+            "coverUrl": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-07-28T20:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_concert_lcd_bk",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "concert:lcd_soundsystem_brooklyn_steel",
+          "status": "completed",
+          "rating": 4,
+          "review": "The 'All My Friends' finale had the entire warehouse bouncing. Classic NYC show.",
+          "loggedAt": "2026-07-28T23:00:00.000Z",
+          "completedAt": "2026-07-28T23:00:00.000Z",
+          "source": "trackstar"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.media",
+        "rkey": "concert_radiohead_wishlist",
+        "value": {
+          "$type": "app.trackstar.media",
+          "id": "concert:radiohead_tour_wishlist",
+          "mediaType": "concert",
+          "title": "Radiohead (Live Tour)",
+          "metadataJson": {
+            "artist": "Radiohead",
+            "creator": "Radiohead",
+            "venue": "World Tour",
+            "year": 2026,
+            "coverUrl": "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?auto=format&fit=crop&w=600&q=80",
+            "source": "trackstar"
+          },
+          "createdAt": "2026-08-13T12:00:00.000Z"
+        }
+      },
+      {
+        "$type": "com.atproto.repo.applyWrites#create",
+        "collection": "app.trackstar.log",
+        "rkey": "log_concert_radiohead_wishlist",
+        "value": {
+          "$type": "app.trackstar.log",
+          "mediaItemId": "concert:radiohead_tour_wishlist",
+          "status": "want_to_consume",
+          "loggedAt": "2026-08-13T12:00:00.000Z",
+          "source": "trackstar"
+        }
+      }
+    ]
+  }
+}
+
+docs {
+  ### ⚡ Seed Variety TrackStar Records (All Media Types & Statuses)
+  
+  Executes an atomic batch insert via `com.atproto.repo.applyWrites` into your PDS repository.
+  
+  All 18 records are tagged with **`source: "trackstar"`**, allowing you to test:
+  
+  1. **All Media Types**:
+     - 📚 **Books**: Completed (Dune / Tomorrow), Consuming (Project Hail Mary), Want-to-Consume (Klara and the Sun).
+     - 🎬 **Movies**: Completed (Interstellar 5★), Consuming (Dune: Part Two), Watchlist (Past Lives).
+     - 🎸 **Concerts**: Completed (Postal Service MSG 5★, LCD Soundsystem 4★), Want-to-See (Radiohead).
+  
+  2. **All Media Lifecycle Statuses**:
+     - `completed`: Populates Dashboard timeline, stats, 5★/4★ ratings, and reviews.
+     - `consuming`: Populates "Currently Consuming" / In-Progress sections.
+     - `want_to_consume`: Populates the "Want to Consume" shelf (`/want-to-consume`).
+  
+  3. **Trackstar Outbound Sync Testing**:
+     - Because `source === "trackstar"`, the browser extension will flag these books as unsynced for StoryGraph and movies as unsynced for Letterboxd!
+}

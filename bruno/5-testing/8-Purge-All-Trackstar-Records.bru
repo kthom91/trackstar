@@ -1,0 +1,63 @@
+meta {
+  name: 8. Purge All TrackStar Records (1-Click Clear)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{pds_url}}/xrpc/com.atproto.repo.applyWrites
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessJwt}}
+}
+
+body:json {
+  {
+    "repo": "{{did}}",
+    "writes": []
+  }
+}
+
+script:pre-request {
+  const axios = require('axios');
+  const pdsUrl = bru.getEnvVar('pds_url') || 'http://localhost:3000';
+  const did = bru.getVar('did') || bru.getEnvVar('did');
+  const jwt = bru.getVar('accessJwt') || bru.getEnvVar('accessJwt');
+  
+  if (did && jwt) {
+    const writes = [];
+    const collections = ['app.trackstar.log', 'app.trackstar.media'];
+  
+    for (const coll of collections) {
+      try {
+        const res = await axios.get(`${pdsUrl}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${coll}&limit=100`, {
+          headers: { Authorization: `Bearer ${jwt}` }
+        });
+        const records = res.data?.records || [];
+        records.forEach(r => {
+          const rkey = r.uri.split('/').pop();
+          writes.push({
+            "$type": "com.atproto.repo.applyWrites#delete",
+            "collection": coll,
+            "rkey": rkey
+          });
+        });
+      } catch (e) {
+        console.warn('Error listing ' + coll, e);
+      }
+    }
+  
+    req.setBody({
+      repo: did,
+      writes: writes.slice(0, 200)
+    });
+  }
+}
+
+docs {
+  ### 1-Click PDS Purge
+  This request uses a pre-request script to automatically inspect your repository for all records in `app.trackstar.log` and `app.trackstar.media`, builds the batch deletion array, and calls `com.atproto.repo.applyWrites` to clear your PDS repository in one single atomic transaction.
+}

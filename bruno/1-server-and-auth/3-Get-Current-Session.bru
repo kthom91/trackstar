@@ -1,0 +1,19 @@
+meta {
+  name: 3. Get Current Session
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{pds_url}}/xrpc/com.atproto.server.getSession
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessJwt}}
+}
+
+docs {
+  Returns information about the current authenticated user session. Requires Bearer accessJwt token.
+}

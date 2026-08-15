@@ -1,0 +1,21 @@
+meta {
+  name: 5. Get TrackStar Log Record
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{pds_url}}/xrpc/com.atproto.repo.getRecord?repo={{did}}&collection=app.trackstar.log&rkey=test_log_entry_001
+  body: none
+  auth: none
+}
+
+params:query {
+  repo: {{did}}
+  collection: app.trackstar.log
+  rkey: test_log_entry_001
+}
+
+docs {
+  Fetches a single record from `app.trackstar.log` by its rkey.
+}

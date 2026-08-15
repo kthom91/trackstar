@@ -1,31 +1,16 @@
 [project]
 name = "trackstar"
 version = "0.1.0"
-description = "TrackStar: Self-hosted personal media tracker with AT Protocol compatibility"
+description = "TrackStar: AT Protocol Personal Media Tracking Client & Sync Tools"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.111.0",
-    "uvicorn[standard]>=0.30.0",
-    "sqlmodel>=0.0.19",
-    "pydantic-settings>=2.3.0",
-    "apscheduler>=3.10.4",
-    "httpx>=0.27.0",
-    "python-multipart>=0.0.9",
     "atproto>=0.0.47",
+    "httpx>=0.27.0",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["app"]
-
-[dependency-groups]
-dev = [
-    "pytest>=8.2.0",
-    "httpx>=0.27.0",
-]
-
-

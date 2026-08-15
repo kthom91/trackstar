@@ -1,0 +1,36 @@
+meta {
+  name: 4. Put TrackStar Log Record
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{pds_url}}/xrpc/com.atproto.repo.putRecord
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessJwt}}
+}
+
+body:json {
+  {
+    "repo": "{{did}}",
+    "collection": "app.trackstar.log",
+    "rkey": "test_log_entry_001",
+    "record": {
+      "$type": "app.trackstar.log",
+      "mediaItemId": "book:dune_test",
+      "status": "completed",
+      "rating": 5,
+      "review": "A masterpiece of science fiction world-building.",
+      "completedAt": "2026-08-14T00:00:00Z",
+      "loggedAt": "2026-08-14T00:00:00Z"
+    }
+  }
+}
+
+docs {
+  Creates or updates a user log entry in `app.trackstar.log`.
+}

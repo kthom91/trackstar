@@ -1,0 +1,19 @@
+meta {
+  name: 1. Describe Repo
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{pds_url}}/xrpc/com.atproto.repo.describeRepo?repo={{handle}}
+  body: none
+  auth: none
+}
+
+params:query {
+  repo: {{handle}}
+}
+
+docs {
+  Lists collections available in the target repository along with the DID document and handle validation.
+}

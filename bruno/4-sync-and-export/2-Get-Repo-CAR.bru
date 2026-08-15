@@ -1,0 +1,19 @@
+meta {
+  name: 2. Get Repo Archive (CAR format)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{pds_url}}/xrpc/com.atproto.sync.getRepo?did={{did}}
+  body: none
+  auth: none
+}
+
+params:query {
+  did: {{did}}
+}
+
+docs {
+  Downloads the complete repository checkout as a Content Addressable Archive (.car binary stream).
+}

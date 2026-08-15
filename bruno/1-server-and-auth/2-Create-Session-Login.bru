@@ -1,0 +1,30 @@
+meta {
+  name: 2. Create Session (Login)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{pds_url}}/xrpc/com.atproto.server.createSession
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "identifier": "{{handle}}",
+    "password": "{{password}}"
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.accessJwt) {
+    bru.setEnvVar("accessJwt", res.body.accessJwt);
+    bru.setEnvVar("refreshJwt", res.body.refreshJwt);
+    bru.setEnvVar("did", res.body.did);
+  }
+}
+
+docs {
+  Authenticates with the PDS and sets `accessJwt`, `refreshJwt`, and `did` environment variables for all subsequent authenticated requests in this collection.
+}

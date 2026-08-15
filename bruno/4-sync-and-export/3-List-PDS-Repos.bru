@@ -1,0 +1,15 @@
+meta {
+  name: 3. List Hosted Repos
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{pds_url}}/xrpc/com.atproto.sync.listRepos
+  body: none
+  auth: none
+}
+
+docs {
+  Enumerates all repository DIDs hosted on this PDS instance.
+}
