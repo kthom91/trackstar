@@ -67,6 +67,11 @@
                 "glob": "icon*.png",
                 "input": "packages/assets/icons",
                 "output": "."
+              },
+              {
+                "glob": "client-metadata.json",
+                "input": "apps/frontend/src",
+                "output": "."
               }
             ],
             "styles": [
@@ -100,6 +105,10 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "host": "0.0.0.0",
+            "port": 4200
+          },
           "configurations": {
             "production": {
               "buildTarget": "frontend:build:production"

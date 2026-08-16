@@ -21,7 +21,7 @@
     "serve": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx ng serve frontend"
+        "command": "npx ng serve frontend --host 0.0.0.0"
       },
       "configurations": {
         "production": {

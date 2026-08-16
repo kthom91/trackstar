@@ -2,8 +2,8 @@
 
 const DEFAULT_PDS_CONFIG = {
   pdsUrl: 'http://localhost:3000',
-  handle: 'user123.trackstar.test',
-  password: 'password123',
+  handle: '',
+  password: '',
   accessJwt: '',
   did: ''
 };
@@ -11,7 +11,7 @@ const DEFAULT_PDS_CONFIG = {
 // Initialize default storage on install & purge legacy local sync ledger
 chrome.runtime.onInstalled.addListener(async () => {
   const data = await chrome.storage.local.get('pdsConfig');
-  if (!data.pdsConfig || data.pdsConfig.handle === 'kentrain.trackstar.test' || !data.pdsConfig.handle) {
+  if (!data.pdsConfig) {
     await chrome.storage.local.set({ pdsConfig: DEFAULT_PDS_CONFIG });
   }
   // Remove legacy local sync cache so PDS is 100% the single source of truth
@@ -44,7 +44,180 @@ async function makeXrpcRequest(endpoint, method = 'GET', body = null, token = nu
   return await res.json();
 }
 
-// Handler: Login to PDS
+// PKCE Helpers for OAuth
+function generateRandomString(length = 64) {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => ('0' + b.toString(16)).slice(-2)).join('').slice(0, length);
+}
+
+async function sha256Base64Url(plain) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plain);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(hash);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+// Handler: OAuth Login via chrome.identity.launchWebAuthFlow
+async function loginOAuth(handle) {
+  const cleanHandle = handle.trim().replace(/^@/, '');
+  if (!cleanHandle) {
+    throw new Error('Please enter a valid handle.');
+  }
+
+  // 1. Resolve handle to DID
+  const resolveRes = await fetch(`https://bsky.social/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(cleanHandle)}`);
+  if (!resolveRes.ok) {
+    throw new Error(`Could not resolve handle "${cleanHandle}"`);
+  }
+  const { did } = await resolveRes.json();
+
+  // 2. Discover PDS service endpoint from DID
+  let pdsUrl = 'https://bsky.social';
+  if (did.startsWith('did:plc:')) {
+    try {
+      const plcDoc = await (await fetch(`https://plc.directory/${did}`)).json();
+      const pdsService = plcDoc?.service?.find(s => s.type === 'AtprotoPersonalDataServer');
+      if (pdsService?.serviceEndpoint) {
+        pdsUrl = pdsService.serviceEndpoint.replace(/\/$/, '');
+      }
+    } catch (e) {
+      console.warn('PLC DID document resolution warning:', e);
+    }
+  }
+
+  // 3. Discover OAuth Authorization Server via /.well-known/oauth-protected-resource
+  let authServer = pdsUrl;
+  try {
+    const prRes = await fetch(`${pdsUrl}/.well-known/oauth-protected-resource`);
+    if (prRes.ok) {
+      const prData = await prRes.json();
+      if (Array.isArray(prData.authorization_servers) && prData.authorization_servers[0]) {
+        authServer = prData.authorization_servers[0].replace(/\/$/, '');
+      }
+    }
+  } catch (e) {
+    console.warn('oauth-protected-resource discovery notice:', e);
+  }
+
+  // 4. Discover endpoints from authorization server
+  let authEndpoint = `${authServer}/oauth/authorize`;
+  let tokenEndpoint = `${authServer}/oauth/token`;
+  let parEndpoint = `${authServer}/oauth/par`;
+  let requirePar = false;
+
+  try {
+    const metaRes = await fetch(`${authServer}/.well-known/oauth-authorization-server`);
+    if (metaRes.ok) {
+      const authMeta = await metaRes.json();
+      authEndpoint = authMeta.authorization_endpoint || authEndpoint;
+      tokenEndpoint = authMeta.token_endpoint || tokenEndpoint;
+      parEndpoint = authMeta.pushed_authorization_request_endpoint || parEndpoint;
+      requirePar = Boolean(authMeta.require_pushed_authorization_requests || authMeta.pushed_authorization_request_endpoint);
+    }
+  } catch (e) {
+    console.warn('OAuth server metadata discovery notice:', e);
+  }
+
+  // 5. Generate PKCE & State
+  const codeVerifier = generateRandomString(64);
+  const codeChallenge = await sha256Base64Url(codeVerifier);
+  const state = generateRandomString(32);
+  const redirectUri = chrome.identity.getRedirectURL('oauth');
+  const clientId = 'https://trackstar.app/client-metadata.json';
+
+  const authParams = new URLSearchParams({
+    client_id: clientId,
+    response_type: 'code',
+    redirect_uri: redirectUri,
+    scope: 'atproto transition:generic',
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+    state: state,
+    login_hint: cleanHandle
+  });
+
+  let authUrl = `${authEndpoint}?${authParams.toString()}`;
+
+  // 6. Handle Pushed Authorization Requests (PAR) if required/supported
+  if (requirePar && parEndpoint) {
+    try {
+      const parRes = await fetch(parEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: authParams
+      });
+
+      if (parRes.ok) {
+        const parData = await parRes.json();
+        if (parData.request_uri) {
+          authUrl = `${authEndpoint}?client_id=${encodeURIComponent(clientId)}&request_uri=${encodeURIComponent(parData.request_uri)}`;
+        }
+      }
+    } catch (parErr) {
+      console.warn('PAR request skipped/fallback:', parErr);
+    }
+  }
+
+  // 7. Launch Web Auth Flow Popup
+  const callbackUrl = await new Promise((resolve, reject) => {
+    chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, responseUrl => {
+      if (chrome.runtime.lastError || !responseUrl) {
+        reject(new Error(chrome.runtime.lastError?.message || 'Authentication cancelled by user.'));
+      } else {
+        resolve(responseUrl);
+      }
+    });
+  });
+
+  const callbackParsed = new URL(callbackUrl);
+  const code = callbackParsed.searchParams.get('code');
+  if (!code) {
+    const err = callbackParsed.searchParams.get('error_description') || callbackParsed.searchParams.get('error') || 'No code returned';
+    throw new Error(`OAuth error: ${err}`);
+  }
+
+  // 8. Exchange Code for Tokens
+  const tokenRes = await fetch(tokenEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code: code,
+      code_verifier: codeVerifier
+    })
+  });
+
+  if (!tokenRes.ok) {
+    const errData = await tokenRes.json().catch(() => ({}));
+    throw new Error(errData.error_description || errData.error || 'Token exchange failed.');
+  }
+
+  const tokenData = await tokenRes.json();
+  const config = {
+    pdsUrl: pdsUrl,
+    handle: cleanHandle,
+    accessJwt: tokenData.access_token,
+    refreshJwt: tokenData.refresh_token,
+    did: tokenData.sub || did,
+    isOAuth: true
+  };
+
+  await chrome.storage.local.set({ pdsConfig: config });
+  return config;
+}
+
+// Handler: Login to PDS (Direct Password)
 async function loginPds(pdsUrl, handle, password) {
   const cleanUrl = pdsUrl.replace(/\/$/, '');
   const res = await fetch(`${cleanUrl}/xrpc/com.atproto.server.createSession`, {
@@ -64,7 +237,8 @@ async function loginPds(pdsUrl, handle, password) {
     handle: session.handle || handle,
     password: password,
     accessJwt: session.accessJwt,
-    did: session.did
+    did: session.did,
+    isOAuth: false
   };
 
   await chrome.storage.local.set({ pdsConfig: config });
@@ -94,24 +268,15 @@ async function fetchAllMediaLogs() {
     throw new Error('Not connected to PDS. Please log in.');
   }
 
-  const mediaRecords = await listAllCollectionRecords(pdsConfig.did, 'app.trackstar.media');
-  const mediaMap = {};
-  mediaRecords.forEach(r => {
-    const val = r.value || {};
-    const id = val.id || r.uri.split('/').pop();
-    mediaMap[id] = { uri: r.uri, ...val };
-  });
-
   const logRecords = await listAllCollectionRecords(pdsConfig.did, 'app.trackstar.log');
 
   const items = [];
   logRecords.forEach(r => {
     const val = r.value || {};
     const rkey = r.uri.split('/').pop();
-    const mediaId = val.mediaItemId || '';
-    const media = mediaMap[mediaId] || {};
+    const mediaId = val.mediaItemId || val.id || rkey;
 
-    let metadata = media.metadataJson || {};
+    let metadata = val.metadata || val.metadataJson || {};
     if (typeof metadata === 'string') {
       try {
         metadata = JSON.parse(metadata);
@@ -120,7 +285,7 @@ async function fetchAllMediaLogs() {
       }
     }
 
-    let mediaType = (media.mediaType || '').toLowerCase();
+    let mediaType = (val.mediaType || '').toLowerCase();
     if (!mediaType) {
       if (mediaId.startsWith('tmdb:') || mediaId.startsWith('movie:')) mediaType = 'movie';
       else if (mediaId.startsWith('isbn:') || mediaId.startsWith('book:')) mediaType = 'book';
@@ -174,12 +339,12 @@ async function fetchAllMediaLogs() {
     const isOriginal = source !== 'trackstar';
     const isSynced = isOriginal;
 
-    const coverUrl = metadata.coverUrl || metadata.poster_url || metadata.artist_image || '';
-    const title = media.title || mediaId.replace(/^[^:]+:/, '').replace(/_/g, ' ');
+    const coverUrl = metadata.coverUrl || metadata.poster_url || metadata.artist_image || metadata.cover_url || '';
+    const title = val.title || mediaId.replace(/^[^:]+:/, '').replace(/_/g, ' ') || 'Untitled';
     const author = metadata.author || metadata.creator || metadata.artist || '';
     const venue = metadata.venue || '';
     const city = metadata.city || '';
-    const year = metadata.year || media.year || (metadata.eventDate ? metadata.eventDate.split('-')[0] : '');
+    const year = metadata.year || (metadata.eventDate ? metadata.eventDate.split('-')[0] : '');
 
     items.push({
       rkey: rkey,
@@ -200,7 +365,8 @@ async function fetchAllMediaLogs() {
       loggedAt: val.loggedAt || '',
       source: source,
       isOriginal: isOriginal,
-      isSynced: isSynced
+      isSynced: isSynced,
+      metadata: metadata
     });
   });
 
@@ -300,14 +466,14 @@ function sanitizeRating(rating) {
   return Math.max(1, Math.min(5, Math.round(parsed)));
 }
 
-// Handler: Batch Ingest Records into PDS (Supports both Movies & Books with Deduplication)
+// Handler: Batch Ingest Records (Single app.trackstar.log collection)
 async function handleBatchIngestPds(records) {
   const { pdsConfig } = await chrome.storage.local.get('pdsConfig');
-  if (!pdsConfig?.did || !pdsConfig?.accessJwt) {
-    throw new Error('Not logged in to PDS. Please configure PDS in the extension popup.');
+  if (!pdsConfig?.did) {
+    throw new Error('Not connected to PDS. Please log in.');
   }
 
-  let totalProcessed = 0;
+  let count = 0;
   const errors = [];
   const CHUNK_SIZE = 5;
 
@@ -315,46 +481,31 @@ async function handleBatchIngestPds(records) {
     const chunk = records.slice(i, i + CHUNK_SIZE);
     await Promise.all(chunk.map(async (item) => {
       try {
-        const mediaType = item.mediaType || (item.author || item.isbn ? 'book' : 'movie');
+        const mediaType = (item.mediaType || (item.author || item.isbn ? 'book' : 'movie')).toLowerCase();
         const title = (item.title || 'Untitled').trim();
         const titleKey = sanitizeKey(title);
         const source = item.source || (mediaType === 'book' ? 'storygraph' : 'letterboxd');
 
-        let mediaKey = '';
-        let mediaId = '';
-        let mediaRecord = {};
         let logRkey = '';
+        let metadata = {};
 
         if (mediaType === 'book') {
-          // BOOK (StoryGraph)
           const author = (item.author || item.creator || '').trim();
-          const authorKey = sanitizeKey(author);
           const isbn = (item.isbn || '').replace(/[^0-9X]/gi, '');
-
-          mediaKey = isbn ? `book_isbn_${isbn}` : `book_${titleKey}${authorKey ? '_' + authorKey : ''}`;
-          mediaId = isbn ? `isbn:${isbn}` : `book:${titleKey}${authorKey ? '_' + authorKey : ''}`;
 
           let coverUrl = item.coverUrl;
           if (!coverUrl && isbn) {
             coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
           }
 
-          mediaRecord = {
-            $type: 'app.trackstar.media',
-            id: mediaId,
-            mediaType: 'book',
-            title: title,
-            metadataJson: {
-              author: author,
-              creator: author,
-              isbn: isbn || undefined,
-              coverUrl: coverUrl,
-              source: source
-            },
-            createdAt: new Date().toISOString()
+          metadata = {
+            author: author,
+            creator: author,
+            isbn: isbn || undefined,
+            coverUrl: coverUrl,
+            source: source
           };
 
-          // Deterministic Log Rkey for Books
           const dateKey = (item.completedDate || item.date || '').replace(/[^0-9]/g, '') || 'nodate';
           if (item.status === 'want_to_consume' || item.status === 'to-read') {
             logRkey = `sg_tbr_${titleKey}`.slice(0, 64);
@@ -365,57 +516,36 @@ async function handleBatchIngestPds(records) {
           }
 
         } else if (mediaType === 'concert') {
-          // CONCERT (setlist.fm)
           const artist = (item.artist || item.creator || item.author || '').trim();
           const venue = (item.venue || '').trim();
           const rawDate = item.completedDate || item.date || item.watchedDate || '';
           const setlistId = item.id || sanitizeKey(`${title}_${rawDate}`);
 
-          mediaKey = sanitizeKey(`setlist_${setlistId}`);
-          mediaId = `setlist:${setlistId}`;
-
-          mediaRecord = {
-            $type: 'app.trackstar.media',
-            id: mediaId,
-            mediaType: 'concert',
-            title: title,
-            metadataJson: {
-              artist: artist,
-              venue: venue,
-              city: item.city || '',
-              country: item.country || '',
-              setlist_url: item.setlistUrl || item.setlist_url || '',
-              eventDate: rawDate,
-              source: source
-            },
-            createdAt: new Date().toISOString()
+          metadata = {
+            artist: artist,
+            venue: venue,
+            city: item.city || '',
+            country: item.country || '',
+            setlist_url: item.setlistUrl || item.setlist_url || '',
+            eventDate: rawDate,
+            source: source
           };
 
           logRkey = sanitizeKey(`setlist_log_${setlistId}`);
 
         } else {
-          // MOVIE (Letterboxd)
+          // MOVIE
           const year = item.year ? String(item.year).trim() : '';
           const yearKey = year ? sanitizeKey(year) : 'na';
           const coverUrl = item.coverUrl || item.poster_url || item.image_url || undefined;
 
-          mediaKey = `movie_${titleKey}${year ? '_' + yearKey : ''}`;
-          mediaId = `movie:${titleKey}${year ? '_' + yearKey : ''}`;
-
-          mediaRecord = {
-            $type: 'app.trackstar.media',
-            id: mediaId,
-            mediaType: 'movie',
-            title: title,
-            metadataJson: {
-              year: year ? parseInt(year, 10) : undefined,
-              letterboxd_url: item.letterboxdUrl || '',
-              coverUrl: coverUrl,
-              poster_url: coverUrl,
-              tags: item.tags || [],
-              source: source
-            },
-            createdAt: new Date().toISOString()
+          metadata = {
+            year: year ? parseInt(year, 10) : undefined,
+            letterboxd_url: item.letterboxdUrl || '',
+            coverUrl: coverUrl,
+            poster_url: coverUrl,
+            tags: item.tags || [],
+            source: source
           };
 
           const dateKey = (item.watchedDate || item.date || '').replace(/[^0-9]/g, '') || 'nodate';
@@ -426,15 +556,6 @@ async function handleBatchIngestPds(records) {
           }
         }
 
-        // 1. Put Media Record (Idempotent)
-        await makeXrpcRequest('com.atproto.repo.putRecord', 'POST', {
-          repo: pdsConfig.did,
-          collection: 'app.trackstar.media',
-          rkey: mediaKey,
-          record: sanitizeAtprotoRecord(mediaRecord)
-        });
-
-        // 2. Put Log Record (Idempotent)
         let completedIso = undefined;
         const rawDate = item.completedDate || item.watchedDate || item.date;
         if (rawDate) {
@@ -452,23 +573,28 @@ async function handleBatchIngestPds(records) {
           } catch {}
         }
 
+        const logRecord = sanitizeAtprotoRecord({
+          $type: 'app.trackstar.log',
+          mediaType: mediaType,
+          title: title,
+          status: item.status === 'to-read' ? 'want_to_consume' : (item.status === 'currently-reading' ? 'consuming' : (item.status || 'completed')),
+          rating: sanitizeRating(item.rating),
+          review: item.review ? String(item.review).trim() : undefined,
+          loggedAt: loggedIso,
+          completedAt: completedIso,
+          source: source,
+          metadata: metadata,
+          metadataJson: metadata
+        });
+
         await makeXrpcRequest('com.atproto.repo.putRecord', 'POST', {
           repo: pdsConfig.did,
           collection: 'app.trackstar.log',
           rkey: logRkey,
-          record: sanitizeAtprotoRecord({
-            $type: 'app.trackstar.log',
-            mediaItemId: mediaId,
-            status: item.status === 'to-read' ? 'want_to_consume' : (item.status === 'currently-reading' ? 'consuming' : (item.status || 'completed')),
-            rating: sanitizeRating(item.rating),
-            review: item.review ? String(item.review).trim() : undefined,
-            completedAt: completedIso,
-            loggedAt: loggedIso,
-            source: source
-          })
+          record: logRecord
         });
 
-        totalProcessed++;
+        count++;
       } catch (err) {
         console.warn(`[Trackstar Batch Ingest] Error on item "${item.title}":`, err);
         errors.push({ title: item.title, error: err.message });
@@ -476,7 +602,7 @@ async function handleBatchIngestPds(records) {
     }));
   }
 
-  return { success: true, count: totalProcessed, total: records.length, errors };
+  return { success: true, count, total: records.length, errors };
 }
 
 // Handler: Mark books as synced to StoryGraph & update source on PDS
@@ -745,33 +871,21 @@ async function handleSetlistFmSync(userId, apiKey) {
           source: 'setlist.fm'
         };
 
-        // 1. Put Media Record (Idempotent)
-        await makeXrpcRequest('com.atproto.repo.putRecord', 'POST', {
-          repo: pdsConfig.did,
-          collection: 'app.trackstar.media',
-          rkey: mediaKey,
-          record: sanitizeAtprotoRecord({
-            $type: 'app.trackstar.media',
-            id: mediaId,
-            mediaType: 'concert',
-            title: title,
-            metadataJson: metadata,
-            createdAt: new Date().toISOString()
-          })
-        });
-
-        // 2. Put Log Record (Idempotent)
+        // Put unified Concert Log Record directly to app.trackstar.log
         await makeXrpcRequest('com.atproto.repo.putRecord', 'POST', {
           repo: pdsConfig.did,
           collection: 'app.trackstar.log',
           rkey: logRkey,
           record: sanitizeAtprotoRecord({
             $type: 'app.trackstar.log',
-            mediaItemId: mediaId,
+            mediaType: 'concert',
+            title: title,
             status: 'completed',
             completedAt: isoDate || new Date().toISOString(),
             loggedAt: new Date().toISOString(),
-            source: 'setlist.fm'
+            source: 'setlist.fm',
+            metadata: metadata,
+            metadataJson: metadata
           })
         });
 
@@ -795,14 +909,12 @@ async function handleSetlistFmSync(userId, apiKey) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handle = async () => {
     switch (message.type) {
+      case 'LOGIN_OAUTH':
+        return await loginOAuth(message.handle);
       case 'LOGIN_PDS':
         return await loginPds(message.pdsUrl, message.handle, message.password);
       case 'GET_CONFIG': {
         const { pdsConfig } = await chrome.storage.local.get('pdsConfig');
-        if (pdsConfig && (pdsConfig.handle === 'kentrain.trackstar.test' || !pdsConfig.handle)) {
-          pdsConfig.handle = 'user123.trackstar.test';
-          await chrome.storage.local.set({ pdsConfig });
-        }
         return pdsConfig || DEFAULT_PDS_CONFIG;
       }
       case 'FETCH_ALL_MEDIA':

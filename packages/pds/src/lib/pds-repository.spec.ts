@@ -13,62 +13,52 @@ describe('PdsRepositoryCore', () => {
     vi.restoreAllMocks();
   });
 
-  it('fetches and joins media items with logs and sorts descending by loggedAt', async () => {
-    const mockMedia = [
-      {
-        uri: 'at://did:plc:alice/app.trackstar.media/movie_interstellar',
-        value: {
-          id: 'movie_interstellar',
-          mediaType: 'movie',
-          title: 'Interstellar',
-          metadataJson: { year: 2014, director: 'Christopher Nolan' }
-        }
-      }
-    ];
-
+  it('fetches unified logs and sorts descending by loggedAt', async () => {
     const mockLogs = [
       {
         uri: 'at://did:plc:alice/app.trackstar.log/3logOld',
         cid: 'cid1',
         value: {
-          mediaItemId: 'movie_interstellar',
+          mediaType: 'movie',
+          title: 'Interstellar',
           status: 'completed',
           rating: 5,
           loggedAt: '2024-01-01T12:00:00Z',
-          source: 'letterboxd'
+          source: 'letterboxd',
+          metadata: { year: 2014, director: 'Christopher Nolan' }
         }
       },
       {
         uri: 'at://did:plc:alice/app.trackstar.log/3logNew',
         cid: 'cid2',
         value: {
-          mediaItemId: 'movie_interstellar',
+          mediaType: 'movie',
+          title: 'Oppenheimer',
           status: 'completed',
-          rating: 4,
+          rating: 5,
           loggedAt: '2024-06-01T12:00:00Z',
-          source: 'letterboxd'
+          source: 'letterboxd',
+          metadata: { year: 2023, director: 'Christopher Nolan' }
         }
       }
     ];
 
     vi.spyOn(client, 'listAllRecords').mockImplementation(async (_did, collection) => {
-      if (collection === LEXICONS.MEDIA) return mockMedia as any;
       if (collection === LEXICONS.LOG) return mockLogs as any;
       return [];
     });
 
-    const { logs, mediaMap } = await repo.fetchMediaAndLogs('did:plc:alice');
+    const logs = await repo.fetchLogs('did:plc:alice');
 
-    expect(mediaMap.size).toBe(1);
-    expect(mediaMap.get('movie_interstellar')?.title).toBe('Interstellar');
     expect(logs.length).toBe(2);
     // Newest first
     expect(logs[0].id).toBe('3logNew');
-    expect(logs[0].mediaItem?.title).toBe('Interstellar');
+    expect(logs[0].title).toBe('Oppenheimer');
     expect(logs[1].id).toBe('3logOld');
+    expect(logs[1].title).toBe('Interstellar');
   });
 
-  it('creates media item and log record atomically', async () => {
+  it('creates unified log record in a single atomic write', async () => {
     const putSpy = vi.spyOn(client, 'putRecord').mockResolvedValue({
       uri: 'at://did:plc:alice/app.trackstar.log/3tid123',
       cid: 'bafy123'
@@ -78,36 +68,25 @@ describe('PdsRepositoryCore', () => {
       mediaType: 'book',
       title: 'Project Hail Mary',
       status: 'want_to_consume',
-      metadataJson: { author: 'Andy Weir' }
+      metadata: { author: 'Andy Weir' }
     });
 
-    expect(putSpy).toHaveBeenCalledTimes(2);
-    // 1st call: app.trackstar.media
-    expect(putSpy).toHaveBeenNthCalledWith(
-      1,
-      'did:plc:alice',
-      LEXICONS.MEDIA,
-      'book_project_hail_mary',
-      expect.objectContaining({
-        title: 'Project Hail Mary',
-        mediaType: 'book'
-      }),
-      'token-123'
-    );
-    // 2nd call: app.trackstar.log
-    expect(putSpy).toHaveBeenNthCalledWith(
-      2,
+    expect(putSpy).toHaveBeenCalledTimes(1);
+    expect(putSpy).toHaveBeenCalledWith(
       'did:plc:alice',
       LEXICONS.LOG,
       expect.stringMatching(/^3/),
       expect.objectContaining({
-        mediaItemId: 'book_project_hail_mary',
-        status: 'want_to_consume'
+        $type: 'app.trackstar.log',
+        mediaType: 'book',
+        title: 'Project Hail Mary',
+        status: 'want_to_consume',
+        metadata: expect.objectContaining({ author: 'Andy Weir' })
       }),
       'token-123'
     );
 
-    expect(result.mediaItemId).toBe('book_project_hail_mary');
+    expect(result.logRkey).toMatch(/^3/);
   });
 
   it('deletes log record from repository', async () => {

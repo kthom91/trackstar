@@ -4,35 +4,66 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "A user's log of consuming a media item.",
+      "description": "A user's self-contained media consumption log and review.",
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["mediaItemId", "status", "loggedAt"],
+        "required": ["mediaType", "title", "status", "loggedAt"],
         "properties": {
-          "mediaItemId": { 
-            "type": "string", 
-            "description": "The external ID or AT URI of the media item" 
+          "mediaType": {
+            "type": "string",
+            "knownValues": ["book", "movie", "concert", "music", "game", "other"],
+            "description": "The type of media being logged."
           },
-          "status": { 
-            "type": "string", 
-            "knownValues": ["want_to_consume", "consuming", "completed"] 
+          "title": {
+            "type": "string",
+            "description": "Title of the media item."
           },
-          "rating": { 
-            "type": "integer", 
-            "minimum": 1, 
-            "maximum": 5 
+          "status": {
+            "type": "string",
+            "knownValues": ["want_to_consume", "consuming", "completed", "dropped"],
+            "description": "User consumption lifecycle status."
           },
-          "review": { 
-            "type": "string" 
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "User rating out of 5."
           },
-          "loggedAt": { 
-            "type": "string", 
-            "format": "datetime" 
+          "review": {
+            "type": "string",
+            "description": "User review notes or commentary."
           },
-          "completedAt": { 
-            "type": "string", 
-            "format": "datetime" 
+          "loggedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Timestamp when this record was logged."
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Timestamp when consumption completed."
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Timestamp when consumption started."
+          },
+          "source": {
+            "type": "string",
+            "description": "Originating source or integration provider (e.g. trackstar, letterboxd, storygraph, setlistfm)."
+          },
+          "metadata": {
+            "type": "unknown",
+            "description": "Rich media metadata (author, director, year, coverUrl/poster_url, venue, city, identifiers, external URLs)."
+          },
+          "metadataJson": {
+            "type": "unknown",
+            "description": "Alias for metadata object for backwards compatibility."
+          },
+          "mediaItemId": {
+            "type": "string",
+            "description": "Legacy media item identifier for backwards compatibility."
           }
         }
       }

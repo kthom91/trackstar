@@ -1,38 +1,34 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { BskyAgent } from '@atproto/api';
 import {
-  CreateLogPayload,
   PdsMediaItem,
   PdsUserLog,
   generateTid,
   getSourceDisplayName,
-  makeRkeySafe,
   sanitizeAtprotoRecord,
   sanitizeRating
-} from '@trackstar/pds';
+} from '@trackstar/data';
 import { DirectMetadataService } from './direct-metadata.service';
-import { ModalService } from './modal.service';
 import { PdsAuthService } from './pds-auth.service';
 
-export type { CreateLogPayload, PdsMediaItem, PdsUserLog };
+export { PdsRepoService as PdsRepositoryService };
+export type { PdsMediaItem, PdsUserLog };
 
-const CACHE_LOGS_KEY = 'trackstar_cached_logs';
-const CACHE_MEDIA_KEY = 'trackstar_cached_media';
+const CACHE_KEY = 'trackstar_logs_cache';
 
 @Injectable({
   providedIn: 'root'
 })
-export class PdsRepositoryService {
+export class PdsRepoService {
   private auth = inject(PdsAuthService);
   private metadataService = inject(DirectMetadataService);
 
-  // State Signals
   readonly logs = signal<PdsUserLog[]>(this.loadCachedLogs());
-  readonly mediaItems = signal<Map<string, PdsMediaItem>>(this.loadCachedMedia());
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
 
   constructor() {
+    // Automatically sync when user logs in
     if (this.auth.isAuthenticated()) {
       this.syncFromPds();
     }
@@ -40,69 +36,59 @@ export class PdsRepositoryService {
 
   private loadCachedLogs(): PdsUserLog[] {
     try {
-      const raw = localStorage.getItem(CACHE_LOGS_KEY);
+      // Check primary unified cache key
+      const raw = localStorage.getItem(CACHE_KEY);
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
     }
   }
 
-  private loadCachedMedia(): Map<string, PdsMediaItem> {
-    try {
-      const raw = localStorage.getItem(CACHE_MEDIA_KEY);
-      if (raw) {
-        const arr: [string, PdsMediaItem][] = JSON.parse(raw);
-        return new Map(arr);
-      }
-    } catch { }
-    return new Map();
-  }
-
   private persistCache(): void {
     try {
-      localStorage.setItem(CACHE_LOGS_KEY, JSON.stringify(this.logs()));
-      const mediaEntries = Array.from(this.mediaItems().entries());
-      localStorage.setItem(CACHE_MEDIA_KEY, JSON.stringify(mediaEntries));
+      localStorage.setItem(CACHE_KEY, JSON.stringify(this.logs()));
     } catch (e) {
-      console.warn('Could not save cache to localStorage:', e);
+      console.warn('Failed to persist PDS cache to localStorage:', e);
     }
   }
 
-  private modalService = inject(ModalService);
-
   /**
-   * Automatically execute AT Protocol operations with session refresh on 401
+   * Helper to execute an XRPC operation with automatic token refresh and DPoP support.
    */
-  private async executeWithAuth<T>(operation: (agent: BskyAgent, repo: string) => Promise<T>): Promise<T> {
+  private async executeWithAuth<T>(operation: (agent: any, repo: string) => Promise<T>): Promise<T> {
     const session = this.auth.session();
-    if (!session) throw new Error('You must be logged into your PDS.');
+    if (!session) {
+      throw new Error('Not authenticated to PDS');
+    }
+
+    const agent = this.auth.getAgent();
 
     try {
-      return await operation(this.auth.getAgent(), session.did);
+      return await operation(agent, session.did);
     } catch (err: any) {
-      const isAuthErr = err?.status === 401 ||
-        err?.message?.includes('AuthenticationRequired') ||
+      // Check if error is due to expired access token
+      const isAuthErr =
+        err?.status === 401 ||
+        err?.error === 'ExpiredToken' ||
         err?.message?.includes('ExpiredToken') ||
-        err?.message?.includes('401') ||
-        err?.error === 'AuthMissing' ||
-        err?.error === 'ExpiredToken';
+        err?.message?.includes('Authentication Required');
 
-      if (isAuthErr) {
-        console.warn('[PdsRepo] Received 401 Unauthorized, refreshing session token...');
+      if (isAuthErr && session.refreshJwt) {
+        console.log('[PdsRepo] Access token expired, attempting automatic session refresh...');
         const refreshed = await this.auth.refreshSession();
-        if (refreshed && this.auth.session()) {
-          return await operation(this.auth.getAgent(), this.auth.session()!.did);
-        } else {
-          console.warn('[PdsRepo] Session expired and cannot be refreshed automatically. Opening PDS login modal.');
-          this.auth.logout();
-          this.modalService.openPdsModal();
-          throw new Error('Your PDS session has expired. Please reconnect your PDS credentials to continue.');
+        if (refreshed) {
+          const freshAgent = this.auth.getAgent();
+          const newSession = this.auth.session()!;
+          return await operation(freshAgent, newSession.did);
         }
       }
       throw err;
     }
   }
 
+  /**
+   * Sync all user records from PDS app.trackstar.log collection.
+   */
   async syncFromPds(): Promise<void> {
     const session = this.auth.session();
     if (!session) return;
@@ -112,97 +98,12 @@ export class PdsRepositoryService {
 
     try {
       await this.executeWithAuth(async (agent, repo) => {
-        // Load current cache to preserve any client-side enrichments (e.g. posters)
-        const cachedMediaMap = this.loadCachedMedia();
-
-        // 1. Fetch all app.trackstar.media records
-        const mediaMap = new Map<string, PdsMediaItem>();
-        let mediaCursor: string | undefined = undefined;
-
-        do {
-          const res = await agent.com.atproto.repo.listRecords({
-            collection: 'app.trackstar.media',
-            repo: repo,
-            limit: 100,
-            cursor: mediaCursor
-          });
-
-          for (const rec of res.data.records) {
-            const val = rec.value as any;
-            const rkey = rec.uri.split('/').pop() || '';
-            const rawId = val.id || rkey;
-
-            let metadata: Record<string, any> = {};
-            if (val.metadataJson) {
-              if (typeof val.metadataJson === 'string') {
-                try {
-                  metadata = JSON.parse(val.metadataJson);
-                } catch {
-                  metadata = {};
-                }
-              } else if (typeof val.metadataJson === 'object') {
-                metadata = { ...val.metadataJson };
-              }
-            } else if (typeof val === 'object') {
-              metadata = { ...val };
-            }
-
-            // Preserve existing cached enrichments (such as coverUrl, poster_url, creator)
-            const cached = cachedMediaMap.get(rawId) ||
-              cachedMediaMap.get(rkey) ||
-              cachedMediaMap.get(makeRkeySafe(rawId)) ||
-              (rawId.includes(':') ? cachedMediaMap.get(rawId.replace(/:/g, '_')) : undefined);
-
-            if (cached && cached.metadataJson) {
-              const cachedMeta = typeof cached.metadataJson === 'string'
-                ? (() => { try { return JSON.parse(cached.metadataJson); } catch { return {}; } })()
-                : cached.metadataJson;
-
-              const existingCover = cachedMeta['coverUrl'] || cachedMeta['poster_url'] || cachedMeta['posterUrl'] || cachedMeta['image_url'];
-              const currentCover = metadata['coverUrl'] || metadata['poster_url'] || metadata['posterUrl'] || metadata['image_url'];
-
-              if (existingCover && !currentCover) {
-                metadata['coverUrl'] = existingCover;
-                metadata['poster_url'] = existingCover;
-              }
-              if (cachedMeta['creator'] && !metadata['creator']) {
-                metadata['creator'] = cachedMeta['creator'];
-              }
-              if (cachedMeta['year'] && !metadata['year']) {
-                metadata['year'] = cachedMeta['year'];
-              }
-            }
-
-            const item: PdsMediaItem = {
-              id: rawId,
-              mediaType: val.mediaType || 'book',
-              title: val.title || 'Untitled',
-              metadataJson: metadata,
-              createdAt: val.createdAt,
-              atUri: rec.uri,
-              rkey: rkey
-            };
-
-            // Map all possible variations of the ID/key so lookups never fail
-            mediaMap.set(item.id, item);
-            mediaMap.set(rkey, item);
-            mediaMap.set(makeRkeySafe(item.id), item);
-            if (item.id.includes(':')) {
-              mediaMap.set(item.id.replace(/:/g, '_'), item);
-            }
-            if (rkey.includes('_')) {
-              mediaMap.set(rkey.replace(/_/g, ':'), item);
-            }
-          }
-          mediaCursor = res.data.cursor;
-        } while (mediaCursor);
-
-        // 2. Fetch all app.trackstar.log records
         const loadedLogs: PdsUserLog[] = [];
         let logCursor: string | undefined = undefined;
 
+        // Fetch all app.trackstar.log records
         do {
-          const res = await agent.com.atproto.repo.listRecords({
+          const res: any = await agent.com.atproto.repo.listRecords({
             collection: 'app.trackstar.log',
             repo: repo,
             limit: 100,
@@ -212,76 +113,54 @@ export class PdsRepositoryService {
           for (const rec of res.data.records) {
             const val = rec.value as any;
             const rkey = rec.uri.split('/').pop() || '';
-            const mediaItemId = val.mediaItemId || '';
+            const rawId = val.mediaItemId || val.id || rkey;
 
-            let mediaItem = mediaMap.get(mediaItemId) ||
-              mediaMap.get(makeRkeySafe(mediaItemId)) ||
-              (mediaItemId.includes(':') ? mediaMap.get(mediaItemId.replace(/:/g, '_')) : undefined) ||
-              (mediaItemId.includes('_') ? mediaMap.get(mediaItemId.replace(/_/g, ':')) : undefined);
-
-            if (!mediaItem) {
-              // Try finding in cache
-              const cached = cachedMediaMap.get(mediaItemId) || cachedMediaMap.get(makeRkeySafe(mediaItemId));
-              if (cached) {
-                mediaItem = cached;
-                mediaMap.set(mediaItemId, cached);
-              }
+            let metadata: Record<string, any> = {};
+            if (val.metadata && typeof val.metadata === 'object') {
+              metadata = { ...val.metadata };
+            } else if (val.metadataJson) {
+              metadata = typeof val.metadataJson === 'string' ? JSON.parse(val.metadataJson) : { ...val.metadataJson };
             }
 
-            if (!mediaItem) {
-              // Infer basic details from ID if not present in media catalog
-              let mType = 'book';
-              let mTitle = mediaItemId;
-              let mYear: number | undefined = undefined;
-              if (mediaItemId.includes(':')) {
-                const [prefix, rawTitle] = mediaItemId.split(':', 2);
-                if (['book', 'movie', 'concert'].includes(prefix)) {
-                  mType = prefix;
-                  const yearMatch = rawTitle.match(/^(.*)_(\d{4})$/);
-                  if (yearMatch) {
-                    mTitle = yearMatch[1].replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
-                    mYear = parseInt(yearMatch[2], 10);
-                  } else {
-                    mTitle = rawTitle.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
-                  }
-                } else if (prefix === 'isbn') {
-                  mType = 'book';
-                  mTitle = `Book (${rawTitle})`;
-                } else if (prefix === 'tmdb') {
-                  mType = 'movie';
-                  mTitle = `Movie (${rawTitle})`;
-                } else if (prefix === 'setlist') {
-                  mType = 'concert';
-                  mTitle = `Concert (${rawTitle})`;
-                }
-              }
-              mediaItem = {
-                id: mediaItemId,
-                mediaType: mType,
-                title: mTitle,
-                metadataJson: mYear ? { year: mYear } : {}
-              };
-            }
+            const mediaType = val.mediaType || val.media?.mediaType || 'book';
+            const title = val.title || val.media?.title || rawId.replace(/^[^:]+:/, '').replace(/_/g, ' ') || 'Untitled';
 
-            let rawSource = val.source || mediaItem.metadataJson?.['source'];
+            let rawSource = val.source || metadata['source'];
             if (rawSource && (rawSource.includes('_autocomplete') || rawSource === 'musicbrainz_artist')) {
               rawSource = 'trackstar';
             }
             const normalizedSource = rawSource || 'trackstar';
+
+            const mediaItem: PdsMediaItem = {
+              id: rawId,
+              mediaType: mediaType,
+              title: title,
+              metadataJson: metadata,
+              createdAt: val.loggedAt || val.createdAt,
+              atUri: rec.uri,
+              rkey: rkey
+            };
+
             const log: PdsUserLog = {
               id: rkey,
               atUri: rec.uri,
               atCid: rec.cid,
-              mediaItemId: mediaItemId,
+              mediaType: mediaType,
+              title: title,
+              mediaItemId: rawId,
               status: val.status || 'completed',
-              rating: val.rating,
+              rating: val.rating !== undefined ? Number(val.rating) : undefined,
               review: val.review,
               loggedAt: val.loggedAt || new Date().toISOString(),
               completedAt: val.completedAt,
+              startedAt: val.startedAt,
               source: normalizedSource,
-              sourceDisplayName: getSourceDisplayName(normalizedSource, mediaItem.mediaType),
+              sourceDisplayName: getSourceDisplayName(normalizedSource, mediaType),
+              metadata: metadata,
+              metadataJson: metadata,
               mediaItem: mediaItem
             };
+
             loadedLogs.push(log);
           }
           logCursor = res.data.cursor;
@@ -294,7 +173,6 @@ export class PdsRepositoryService {
           return dateB - dateA;
         });
 
-        this.mediaItems.set(mediaMap);
         this.logs.set(loadedLogs);
         this.persistCache();
       });
@@ -307,50 +185,38 @@ export class PdsRepositoryService {
     }
   }
 
-  // Set of media IDs that have already been enriched in this session
+  // Set of record keys that have already been enriched in this session
   private enrichedIds = new Set<string>();
 
   /**
-   * On-demand targeted metadata & image enrichment for only the active/visible records.
+   * On-demand targeted metadata & image enrichment for active/visible records.
    */
   async enrichItems(targetItems: PdsUserLog[]): Promise<void> {
     if (!targetItems || targetItems.length === 0) return;
 
-    const mediaMap = new Map(this.mediaItems());
     let hasUpdates = false;
 
-    // Filter to only items that lack covers and have not been resolved yet
     const toEnrich = targetItems.filter(log => {
-      const mItem = log.mediaItem;
-      if (!mItem) return false;
-      const meta = typeof mItem.metadataJson === 'string'
-        ? (() => { try { return JSON.parse(mItem.metadataJson); } catch { return {}; } })()
-        : (mItem.metadataJson || {});
+      const meta = log.metadata || log.metadataJson || {};
       const hasCover = meta['coverUrl'] || meta['cover_url'] || meta['poster_url'] || meta['posterUrl'] || meta['image_url'];
       if (hasCover) return false;
-      const key = mItem.id || log.mediaItemId;
-      if (this.enrichedIds.has(key)) return false;
+      const key = log.id || log.mediaItemId || '';
+      if (key && this.enrichedIds.has(key)) return false;
       return true;
     });
 
     if (toEnrich.length === 0) return;
 
-    // Mark items as checked
     toEnrich.forEach(log => {
-      const key = log.mediaItem?.id || log.mediaItemId;
+      const key = log.id || log.mediaItemId || '';
       if (key) this.enrichedIds.add(key);
     });
 
     for (const log of toEnrich) {
-      const mItem = log.mediaItem;
-      if (!mItem) continue;
-
-      let meta = typeof mItem.metadataJson === 'string'
-        ? (() => { try { return JSON.parse(mItem.metadataJson); } catch { return {}; } })()
-        : { ...(mItem.metadataJson || {}) };
+      const meta = { ...(log.metadata || log.metadataJson || {}) };
 
       try {
-        const enriched = await this.metadataService.resolveMetadata(mItem.mediaType, mItem.title, mItem.id || log.mediaItemId);
+        const enriched = await this.metadataService.resolveMetadata(log.mediaType, log.title, log.mediaItemId || log.id);
         if (enriched && enriched.coverUrl) {
           const updatedMeta: Record<string, any> = {
             ...meta,
@@ -364,49 +230,50 @@ export class PdsRepositoryService {
           if (enriched.year && !meta['year']) {
             updatedMeta['year'] = enriched.year;
           }
-          mItem.metadataJson = updatedMeta;
 
-          // Register all key aliases
-          mediaMap.set(mItem.id, mItem);
-          if (mItem.rkey) mediaMap.set(mItem.rkey, mItem);
-          mediaMap.set(makeRkeySafe(mItem.id), mItem);
-          if (mItem.id.includes(':')) {
-            mediaMap.set(mItem.id.replace(/:/g, '_'), mItem);
+          log.metadata = updatedMeta;
+          log.metadataJson = updatedMeta;
+          if (log.mediaItem) {
+            log.mediaItem.metadataJson = updatedMeta;
           }
 
           hasUpdates = true;
 
-          // Persist enriched media record back to PDS so it's permanently stored across reloads and devices
+          // Persist enriched record back to PDS
           if (this.auth.isAuthenticated()) {
-            const mediaRkey = mItem.rkey || makeRkeySafe(mItem.id);
             this.executeWithAuth(async (agent, repo) => {
               const sanitizedRecord = sanitizeAtprotoRecord({
-                $type: 'app.trackstar.media',
-                id: mItem.id,
-                mediaType: mItem.mediaType,
-                title: mItem.title,
-                metadataJson: mItem.metadataJson,
-                createdAt: mItem.createdAt || new Date().toISOString()
+                $type: 'app.trackstar.log',
+                mediaType: log.mediaType,
+                title: log.title,
+                status: log.status,
+                rating: sanitizeRating(log.rating),
+                review: log.review?.trim() || undefined,
+                loggedAt: log.loggedAt,
+                completedAt: log.completedAt,
+                startedAt: log.startedAt,
+                source: log.source || 'trackstar',
+                metadata: updatedMeta,
+                metadataJson: updatedMeta
               });
 
               await agent.com.atproto.repo.putRecord({
-                collection: 'app.trackstar.media',
+                collection: 'app.trackstar.log',
                 repo: repo,
-                rkey: mediaRkey,
+                rkey: log.id,
                 record: sanitizedRecord
               });
             }).catch(pdsErr => {
-              console.warn('[PdsRepo] Background PDS media enrichment save skipped:', pdsErr);
+              console.warn('[PdsRepo] Background PDS log enrichment save skipped:', pdsErr);
             });
           }
         }
-      } catch (enrichErr) {
+      } catch {
         // silently continue
       }
     }
 
     if (hasUpdates) {
-      this.mediaItems.set(mediaMap);
       this.logs.set([...this.logs()]);
       this.persistCache();
     }
@@ -418,6 +285,9 @@ export class PdsRepositoryService {
     }
   }
 
+  /**
+   * Create a single, self-contained app.trackstar.log entry in PDS.
+   */
   async createLog(payload: {
     mediaType: string;
     title: string;
@@ -426,66 +296,39 @@ export class PdsRepositoryService {
     review?: string;
     mediaItemId?: string;
     completedAt?: string;
+    startedAt?: string;
     loggedAt?: string;
     source?: string;
+    metadata?: Record<string, any>;
     metadataJson?: Record<string, any>;
   }): Promise<PdsUserLog> {
     return await this.executeWithAuth(async (agent, repo) => {
-      // 1. Determine canonical source (defaults to 'trackstar' for manual UI entries)
       const source = payload.source || 'trackstar';
-
-      // 2. Prepare metadata
-      let metadata = { ...(payload.metadataJson || {}) };
+      let metadata = { ...(payload.metadata || payload.metadataJson || {}) };
       metadata['source'] = source;
       metadata = sanitizeAtprotoRecord(metadata);
 
-      // 3. Prepare Media Item record
-      const mediaId = payload.mediaItemId || `${payload.mediaType}:${payload.title.toLowerCase().replace(/\s+/g, '_')}`;
-      const mediaRkey = makeRkeySafe(mediaId);
-
-      const mediaRecord = sanitizeAtprotoRecord({
-        $type: 'app.trackstar.media',
-        id: mediaId,
-        mediaType: payload.mediaType,
-        title: payload.title,
-        metadataJson: metadata,
-        createdAt: new Date().toISOString()
-      });
-
-      // Put Media record directly into PDS
-      await agent.com.atproto.repo.putRecord({
-        collection: 'app.trackstar.media',
-        repo: repo,
-        rkey: mediaRkey,
-        record: mediaRecord
-      });
-
-      const savedMediaItem: PdsMediaItem = {
-        id: mediaId,
-        mediaType: payload.mediaType,
-        title: payload.title,
-        metadataJson: metadata,
-        createdAt: mediaRecord.createdAt,
-        atUri: `at://${repo}/app.trackstar.media/${mediaRkey}`,
-        rkey: mediaRkey
-      };
-
-      // 4. Prepare User Log record
       const logRkey = generateTid();
       const loggedAt = payload.loggedAt || new Date().toISOString();
+      const mediaId = payload.mediaItemId || `${payload.mediaType}:${payload.title.toLowerCase().replace(/\s+/g, '_')}`;
 
       const logRecord: Record<string, any> = sanitizeAtprotoRecord({
         $type: 'app.trackstar.log',
-        mediaItemId: mediaId,
+        mediaType: payload.mediaType,
+        title: payload.title.trim(),
         status: payload.status,
         rating: sanitizeRating(payload.rating),
         review: payload.review?.trim() || undefined,
         loggedAt: loggedAt,
         completedAt: payload.completedAt || (payload.status === 'completed' ? loggedAt : undefined),
-        source: source
+        startedAt: payload.startedAt,
+        source: source,
+        metadata: metadata,
+        metadataJson: metadata,
+        mediaItemId: mediaId
       });
 
-      // Put User Log record directly into PDS
+      // Put unified User Log record directly into PDS
       const logRes = await agent.com.atproto.repo.putRecord({
         collection: 'app.trackstar.log',
         repo: repo,
@@ -493,30 +336,35 @@ export class PdsRepositoryService {
         record: logRecord
       });
 
+      const mediaItem: PdsMediaItem = {
+        id: mediaId,
+        mediaType: payload.mediaType,
+        title: payload.title.trim(),
+        metadataJson: metadata,
+        createdAt: loggedAt,
+        atUri: logRes.data.uri,
+        rkey: logRkey
+      };
+
       const newLog: PdsUserLog = {
         id: logRkey,
         atUri: logRes.data.uri,
         atCid: logRes.data.cid,
+        mediaType: payload.mediaType,
+        title: payload.title.trim(),
         mediaItemId: mediaId,
         status: payload.status,
         rating: payload.rating,
         review: payload.review,
         loggedAt: loggedAt,
-        completedAt: payload.completedAt,
+        completedAt: payload.completedAt || (payload.status === 'completed' ? loggedAt : undefined),
+        startedAt: payload.startedAt,
         source: source,
         sourceDisplayName: getSourceDisplayName(source, payload.mediaType),
-        mediaItem: savedMediaItem
+        metadata: metadata,
+        metadataJson: metadata,
+        mediaItem: mediaItem
       };
-
-      // 4. Update reactive state signals
-      const currentMedia = new Map(this.mediaItems());
-      currentMedia.set(mediaId, savedMediaItem);
-      currentMedia.set(mediaRkey, savedMediaItem);
-      currentMedia.set(makeRkeySafe(mediaId), savedMediaItem);
-      if (mediaId.includes(':')) {
-        currentMedia.set(mediaId.replace(/:/g, '_'), savedMediaItem);
-      }
-      this.mediaItems.set(currentMedia);
 
       this.logs.update(logs => [newLog, ...logs]);
       this.persistCache();
@@ -546,12 +394,12 @@ export class PdsRepositoryService {
       result = result.filter(l => l.status === status);
     }
     if (type) {
-      result = result.filter(l => l.mediaItem?.mediaType === type);
+      result = result.filter(l => (l.mediaType || l.mediaItem?.mediaType) === type);
     }
     if (query && query.trim()) {
       const q = query.toLowerCase().trim();
       result = result.filter(l =>
-        (l.mediaItem?.title || '').toLowerCase().includes(q) ||
+        (l.title || l.mediaItem?.title || '').toLowerCase().includes(q) ||
         (l.review || '').toLowerCase().includes(q)
       );
     }
@@ -564,7 +412,7 @@ export class PdsRepositoryService {
       if (excludeStatus && log.status === excludeStatus) continue;
       if (onlyStatus && log.status !== onlyStatus) continue;
 
-      const type = log.mediaItem?.mediaType || 'book';
+      const type = log.mediaType || log.mediaItem?.mediaType || 'book';
       if (type in counts) {
         counts[type]++;
       }

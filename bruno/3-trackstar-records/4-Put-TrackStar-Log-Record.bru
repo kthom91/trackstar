@@ -21,12 +21,19 @@ body:json {
     "rkey": "test_log_entry_001",
     "record": {
       "$type": "app.trackstar.log",
-      "mediaItemId": "book:dune_test",
+      "mediaType": "book",
+      "title": "Dune",
       "status": "completed",
       "rating": 5,
       "review": "A masterpiece of science fiction world-building.",
       "completedAt": "2026-08-14T00:00:00Z",
-      "loggedAt": "2026-08-14T00:00:00Z"
+      "loggedAt": "2026-08-14T00:00:00Z",
+      "source": "trackstar",
+      "metadata": {
+        "author": "Frank Herbert",
+        "year": 1965,
+        "coverUrl": "https://covers.openlibrary.org/b/isbn/9780441172719-M.jpg"
+      }
     }
   }
 }

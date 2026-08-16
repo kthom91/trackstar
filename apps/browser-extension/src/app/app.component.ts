@@ -53,45 +53,83 @@ import { getProvider, getAllProviders, IntegrationProvider } from '@trackstar/in
         <!-- PDS Settings Modal / Dropdown Panel -->
         <div *ngIf="isSettingsOpen()" class="p-3 bg-[#faf7f2] border border-[rgba(14,14,14,0.24)] rounded-xl space-y-3 shadow-sm animate-fadeIn">
           <div class="flex items-center justify-between pb-1.5 border-b border-[rgba(14,14,14,0.14)]">
-            <span class="font-serif font-bold text-xs text-[#0e0e0e]">PDS Credentials</span>
+            <span class="font-serif font-bold text-xs text-[#0e0e0e]">PDS Connection</span>
             <span class="text-[9px] font-mono text-[#9a8f7e] uppercase">AT Protocol</span>
           </div>
 
-          <div class="space-y-2">
+          <!-- Auth Mode Tabs -->
+          <div class="grid grid-cols-2 p-0.5 bg-[#f0ede6] rounded-lg font-mono text-[10px] border border-[rgba(14,14,14,0.1)]">
+            <button type="button"
+                    (click)="authMode = 'oauth'"
+                    [ngClass]="authMode === 'oauth' ? 'bg-[#0e0e0e] text-[#f0ede6] font-bold shadow-xs' : 'text-[#3d3830]'"
+                    class="py-1 rounded-md transition-all text-center">
+              🦋 OAuth (Bluesky)
+            </button>
+            <button type="button"
+                    (click)="authMode = 'password'"
+                    [ngClass]="authMode === 'password' ? 'bg-[#0e0e0e] text-[#f0ede6] font-bold shadow-xs' : 'text-[#3d3830]'"
+                    class="py-1 rounded-md transition-all text-center">
+              🖥️ Local / Password
+            </button>
+          </div>
+
+          <!-- 1. OAuth Form -->
+          <div *ngIf="authMode === 'oauth'" class="space-y-2">
+            <div>
+              <label class="block text-[10px] text-[#3d3830] font-bold mb-0.5">Bluesky / AT Protocol Handle</label>
+              <input type="text" [(ngModel)]="handle" placeholder="e.g. kthom91.bsky.social"
+                     (keydown.enter)="saveOAuth()"
+                     class="w-full px-2.5 py-1.5 bg-white border border-[rgba(14,14,14,0.24)] rounded-md text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+              <p class="text-[9px] text-[#9a8f7e] mt-1">Authenticates securely via standard PKCE OAuth popup.</p>
+            </div>
+
+            <button (click)="saveOAuth()" [disabled]="bridge.loading() || !handle.trim()"
+                    class="w-full py-1.5 bg-[#0e0e0e] hover:bg-neutral-800 disabled:opacity-50 text-[#f0ede6] font-mono font-medium rounded-lg text-xs transition-colors shadow-xs">
+              {{ bridge.loading() ? 'Opening Bluesky OAuth…' : 'Sign In with Bluesky' }}
+            </button>
+          </div>
+
+          <!-- 2. Password Form -->
+          <div *ngIf="authMode === 'password'" class="space-y-2">
             <div>
               <label class="block text-[10px] text-[#3d3830] font-bold mb-0.5">PDS URL</label>
-              <input type="text" [(ngModel)]="pdsUrl" placeholder="http://localhost:3000"
+              <input type="text" [(ngModel)]="pdsUrl" placeholder="https://bsky.social"
                      class="w-full px-2.5 py-1 bg-white border border-[rgba(14,14,14,0.24)] rounded-md text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+              <div class="flex space-x-1.5 pt-1">
+                <button (click)="setPresetBsky()" type="button" class="px-2 py-0.5 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.18)] rounded text-[9px] text-[#3d3830] transition-colors">
+                  🦋 Bluesky (bsky.social)
+                </button>
+                <button (click)="setPresetLocal()" type="button" class="px-2 py-0.5 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.18)] rounded text-[9px] text-[#3d3830] transition-colors">
+                  🖥️ Local (:3000)
+                </button>
+              </div>
             </div>
 
             <div>
               <label class="block text-[10px] text-[#3d3830] font-bold mb-0.5">Handle</label>
-              <input type="text" [(ngModel)]="handle" placeholder="user.bsky.social"
+              <input type="text" [(ngModel)]="handle" placeholder="user.test"
                      class="w-full px-2.5 py-1 bg-white border border-[rgba(14,14,14,0.24)] rounded-md text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
             </div>
 
             <div>
-              <label class="block text-[10px] text-[#3d3830] font-bold mb-0.5">App Password</label>
+              <label class="block text-[10px] text-[#3d3830] font-bold mb-0.5">Password</label>
               <input type="password" [(ngModel)]="password" placeholder="••••••••"
                      class="w-full px-2.5 py-1 bg-white border border-[rgba(14,14,14,0.24)] rounded-md text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
             </div>
-          </div>
 
-          <!-- Presets -->
-          <div class="flex space-x-1.5 pt-1">
-            <button (click)="setPresetLocal()" class="px-2 py-0.5 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.18)] rounded text-[10px] text-[#3d3830] transition-colors">
-              Local PDS (3000)
-            </button>
-            <button (click)="setPresetBsky()" class="px-2 py-0.5 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.18)] rounded text-[10px] text-[#3d3830] transition-colors">
-              Bluesky Social
+            <button (click)="savePassword()" [disabled]="bridge.loading() || !handle.trim() || !password.trim()"
+                    class="w-full py-1.5 bg-[#0e0e0e] hover:bg-neutral-800 disabled:opacity-50 text-[#f0ede6] font-mono font-medium rounded-lg text-xs transition-colors shadow-xs">
+              {{ bridge.loading() ? 'Connecting…' : 'Connect with Password' }}
             </button>
           </div>
 
-          <!-- Save Button -->
-          <button (click)="saveSettings()" [disabled]="bridge.loading()"
-                  class="w-full py-1.5 bg-[#0e0e0e] hover:bg-neutral-800 disabled:opacity-50 text-[#f0ede6] font-mono font-medium rounded-lg text-xs transition-colors shadow-xs">
-            {{ bridge.loading() ? 'Connecting…' : 'Save & Connect' }}
-          </button>
+          <!-- If connected, show disconnect option -->
+          <div *ngIf="bridge.isConnected()" class="pt-1.5 border-t border-[rgba(14,14,14,0.14)]">
+            <button (click)="logout()"
+                    class="w-full py-1 text-center text-[10px] text-rose-700 hover:text-rose-900 transition-colors">
+              Disconnect Account
+            </button>
+          </div>
         </div>
 
         <!-- Connection Status Pill -->
@@ -225,7 +263,7 @@ import { getProvider, getAllProviders, IntegrationProvider } from '@trackstar/in
                   <label class="block text-[9px] font-mono font-bold text-[#3d3830] mb-0.5 uppercase tracking-wider">Username</label>
                   <input type="text"
                          [(ngModel)]="setlistInputUsername"
-                         placeholder="e.g. user123"
+                         placeholder="e.g. username"
                          class="w-full px-2 py-1 bg-white border border-[rgba(14,14,14,0.24)] rounded-md text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e] font-mono">
                 </div>
                 <div>
@@ -347,9 +385,10 @@ export class AppComponent {
   activeTab = signal<'integrations' | 'unsynced'>('integrations');
   isSettingsOpen = signal<boolean>(false);
 
+  authMode: 'oauth' | 'password' = 'oauth';
   pdsUrl = 'http://localhost:3000';
-  handle = 'user123.trackstar.test';
-  password = 'password123';
+  handle = '';
+  password = '';
   rssInputUsername = '';
   setlistInputUsername = '';
   setlistInputApiKey = '';
@@ -378,8 +417,6 @@ export class AppComponent {
 
   setPresetLocal() {
     this.pdsUrl = 'http://localhost:3000';
-    this.handle = 'user123.trackstar.test';
-    this.password = 'password123';
   }
 
   setPresetBsky() {
@@ -388,11 +425,24 @@ export class AppComponent {
     this.password = '';
   }
 
-  async saveSettings() {
+  async saveOAuth() {
+    const success = await this.bridge.loginOAuth(this.handle);
+    if (success) {
+      this.isSettingsOpen.set(false);
+    }
+  }
+
+  async savePassword() {
     const success = await this.bridge.loginPds(this.pdsUrl, this.handle, this.password);
     if (success) {
       this.isSettingsOpen.set(false);
     }
+  }
+
+  async logout() {
+    await this.bridge.logout();
+    this.handle = '';
+    this.password = '';
   }
 
   async refresh() {
@@ -404,12 +454,16 @@ export class AppComponent {
   }
 
   openLetterboxdWatchlist() {
-    let user = 'user123';
+    let user = '';
     const config = this.bridge.config();
     if (config?.handle) {
-      user = config.handle.split('.')[0] || 'user123';
+      user = config.handle.split('.')[0] || '';
     }
-    this.bridge.openTab(`https://letterboxd.com/${user}/watchlist/`);
+    if (user) {
+      this.bridge.openTab(`https://letterboxd.com/${user}/watchlist/`);
+    } else {
+      this.bridge.openTab('https://letterboxd.com/');
+    }
   }
 
   movieWatchlistCount(): number {

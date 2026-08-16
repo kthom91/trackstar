@@ -5,6 +5,7 @@
   "description": "1-click sync helper for Letterboxd, StoryGraph, and AT Protocol PDS.",
   "permissions": [
     "storage",
+    "identity",
     "activeTab",
     "tabs",
     "scripting"
@@ -19,6 +20,8 @@
     "https://storage.googleapis.com/*",
     "http://localhost:3000/*",
     "https://*.bsky.social/*",
+    "https://*.bsky.network/*",
+    "https://plc.directory/*",
     "https://*.atproto.host/*"
   ],
   "action": {

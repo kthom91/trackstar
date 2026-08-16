@@ -16,9 +16,14 @@ dist/
 # Environment & secrets
 .env
 .env.*
-!.env.example
-!.env.template
+*.env
+**/*.env
+!*.env.example
+!*.env.template
 .envrc
+bruno/environments/*.env
+bruno/.env*
+.bru/
 
 # TrackStar local PDS data
 data/

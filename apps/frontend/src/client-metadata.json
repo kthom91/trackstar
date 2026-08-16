@@ -1,0 +1,22 @@
+{
+  "client_id": "http://127.0.0.1:4200/client-metadata.json",
+  "client_name": "TrackStar",
+  "client_uri": "http://127.0.0.1:4200",
+  "logo_uri": "http://127.0.0.1:4200/icon.svg",
+  "tos_uri": "http://127.0.0.1:4200",
+  "policy_uri": "http://127.0.0.1:4200",
+  "redirect_uris": [
+    "http://127.0.0.1:4200",
+    "http://127.0.0.1:4200/",
+    "http://127.0.0.1:4200/oauth/callback",
+    "http://localhost:4200",
+    "http://localhost:4200/",
+    "http://localhost:4200/oauth/callback"
+  ],
+  "scope": "atproto transition:generic",
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none",
+  "application_type": "web",
+  "dpop_bound_access_tokens": true
+}

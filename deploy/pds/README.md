@@ -144,4 +144,4 @@ Once your PDS is live:
 1. Open the **TrackStar Web App** or **Browser Extension**.
 2. Set the PDS Service URL to `https://pds.yourdomain.com`.
 3. Log in with your handle and password (or an App Password generated in your account).
-4. All media logs (`app.trackstar.log`) and metadata records (`app.trackstar.media`) will now be persisted directly to your self-hosted PDS repository!
+4. All media logs (`app.trackstar.log`) will now be persisted directly to your self-hosted PDS repository!

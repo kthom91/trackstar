@@ -33,14 +33,19 @@ export interface PdsUserLog {
   id: string; // rkey
   atUri: string;
   atCid?: string;
-  mediaItemId: string;
-  status: string; // "want_to_consume", "consuming", "completed"
+  mediaType: string; // "book", "movie", "concert", "music"
+  title: string;
+  status: string; // "want_to_consume", "consuming", "completed", "dropped"
   rating?: number;
   review?: string;
   loggedAt: string;
   completedAt?: string;
+  startedAt?: string;
   source?: string;
   sourceDisplayName?: string;
+  metadata?: Record<string, any>;
+  metadataJson?: Record<string, any>;
+  mediaItemId?: string;
   mediaItem?: PdsMediaItem;
 }
 
@@ -50,11 +55,13 @@ export interface CreateLogPayload {
   status: string;
   rating?: number;
   review?: string;
-  mediaItemId?: string;
   completedAt?: string;
+  startedAt?: string;
   loggedAt?: string;
   source?: string;
+  metadata?: Record<string, any>;
   metadataJson?: Record<string, any>;
+  mediaItemId?: string;
 }
 
 export interface AtpRecord<T = Record<string, any>> {

@@ -22,8 +22,8 @@ export class ExtensionBridgeService {
   // Reactive signals
   readonly config = signal<PdsConfig>({
     pdsUrl: 'http://localhost:3000',
-    handle: 'user123.trackstar.test',
-    password: 'password123'
+    handle: '',
+    password: ''
   });
 
   readonly isConnected = computed(() => {
@@ -99,9 +99,6 @@ export class ExtensionBridgeService {
       const res = await this.sendMessage<{ success: boolean; data: PdsConfig }>({ type: 'GET_CONFIG' });
       if (res?.data) {
         const cfg = { ...res.data };
-        if (cfg.handle === 'kentrain.trackstar.test' || !cfg.handle) {
-          cfg.handle = 'user123.trackstar.test';
-        }
         this.config.set(cfg);
         return Boolean(cfg.did && cfg.accessJwt);
       }
@@ -109,6 +106,34 @@ export class ExtensionBridgeService {
       console.warn('Failed to load PDS config:', e);
     }
     return false;
+  }
+
+  async loginOAuth(handle: string): Promise<boolean> {
+    this.loading.set(true);
+    this.error.set(null);
+
+    try {
+      const res = await this.sendMessage<{ success: boolean; data?: PdsConfig; error?: string }>({
+        type: 'LOGIN_OAUTH',
+        handle: handle.trim()
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'OAuth Authentication failed');
+      }
+
+      if (res.data) {
+        this.config.set(res.data);
+      }
+
+      await this.fetchAllMedia();
+      return true;
+    } catch (err: any) {
+      this.error.set(err?.message || 'OAuth Login failed');
+      return false;
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   async loginPds(pdsUrl: string, handle: string, pass: string): Promise<boolean> {
@@ -139,6 +164,21 @@ export class ExtensionBridgeService {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async logout(): Promise<void> {
+    const emptyConfig: PdsConfig = {
+      pdsUrl: 'http://localhost:3000',
+      handle: '',
+      password: '',
+      accessJwt: '',
+      did: ''
+    };
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      await chrome.storage.local.set({ pdsConfig: emptyConfig });
+    }
+    this.config.set(emptyConfig);
+    this.mediaItems.set([]);
   }
 
   async fetchAllMedia(): Promise<void> {
