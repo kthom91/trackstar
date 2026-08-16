@@ -1,16 +1,19 @@
 {
-  "client_id": "http://127.0.0.1:4200/client-metadata.json",
+  "client_id": "https://kthom91.github.io/trackstar/client-metadata.json",
   "client_name": "TrackStar",
-  "client_uri": "http://127.0.0.1:4200",
-  "logo_uri": "http://127.0.0.1:4200/icon.svg",
-  "tos_uri": "http://127.0.0.1:4200",
-  "policy_uri": "http://127.0.0.1:4200",
+  "client_uri": "https://kthom91.github.io/trackstar/",
+  "logo_uri": "https://kthom91.github.io/trackstar/icon.svg",
+  "tos_uri": "https://kthom91.github.io/trackstar/",
+  "policy_uri": "https://kthom91.github.io/trackstar/",
   "redirect_uris": [
-    "http://127.0.0.1:4200",
+    "https://kthom91.github.io/trackstar/",
+    "https://kthom91.github.io/trackstar",
+    "https://kthom91.github.io/trackstar/oauth/callback",
     "http://127.0.0.1:4200/",
+    "http://127.0.0.1:4200",
     "http://127.0.0.1:4200/oauth/callback",
-    "http://localhost:4200",
     "http://localhost:4200/",
+    "http://localhost:4200",
     "http://localhost:4200/oauth/callback"
   ],
   "scope": "atproto transition:generic",
@@ -20,3 +23,4 @@
   "application_type": "web",
   "dpop_bound_access_tokens": true
 }
+
