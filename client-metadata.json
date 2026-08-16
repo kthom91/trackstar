@@ -11,10 +11,7 @@
     "https://kthom91.github.io/trackstar/oauth/callback",
     "http://127.0.0.1:4200/",
     "http://127.0.0.1:4200",
-    "http://127.0.0.1:4200/oauth/callback",
-    "http://localhost:4200/",
-    "http://localhost:4200",
-    "http://localhost:4200/oauth/callback"
+    "http://127.0.0.1:4200/oauth/callback"
   ],
   "scope": "atproto transition:generic",
   "grant_types": ["authorization_code", "refresh_token"],
