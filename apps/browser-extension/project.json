@@ -1,0 +1,30 @@
+{
+  "name": "browser-extension",
+  "projectType": "application",
+  "sourceRoot": "apps/browser-extension/src",
+  "tags": ["type:app", "platform:browser-extension"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx ng build",
+        "cwd": "apps/browser-extension"
+      },
+      "configurations": {
+        "production": {
+          "command": "npx ng build --configuration production"
+        },
+        "development": {
+          "command": "npx ng build --configuration development"
+        }
+      }
+    },
+    "watch": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx ng build --watch --configuration development",
+        "cwd": "apps/browser-extension"
+      }
+    }
+  }
+}

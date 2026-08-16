@@ -23,7 +23,7 @@ A complete Bruno API collection to test, explore, and interact directly with you
 - **Describe Repo**: `GET /xrpc/com.atproto.repo.describeRepo`
 - **Resolve Handle**: `GET /xrpc/com.atproto.identity.resolveHandle`
 
-### 3. TrackStar Lexicons (CRUD & Purge)
+### 3. TrackStar Lexicons (CRUD, Prefix Ranges, & Purge)
 - **List Media Items**: `GET /xrpc/com.atproto.repo.listRecords?collection=app.trackstar.media`
 - **Put Media Record**: `POST /xrpc/com.atproto.repo.putRecord` (Creates/updates `app.trackstar.media`)
 - **List Logs**: `GET /xrpc/com.atproto.repo.listRecords?collection=app.trackstar.log`
@@ -31,6 +31,9 @@ A complete Bruno API collection to test, explore, and interact directly with you
 - **Get Log Record**: `GET /xrpc/com.atproto.repo.getRecord`
 - **Delete Log Record**: `POST /xrpc/com.atproto.repo.deleteRecord` (Single record delete)
 - **Apply Writes (Batch Delete)**: `POST /xrpc/com.atproto.repo.applyWrites` (Atomic multi-record batch delete)
+- **List Media By Prefix (Movies)**: `GET /xrpc/com.atproto.repo.listRecords?...&rkeyStart=movie_&rkeyEnd=movie_~` (MST prefix query)
+- **List Media By Prefix (Books)**: `GET /xrpc/com.atproto.repo.listRecords?...&rkeyStart=book_&rkeyEnd=book_~` (MST prefix query)
+- **List Media By Prefix (Concerts)**: `GET /xrpc/com.atproto.repo.listRecords?...&rkeyStart=concert_&rkeyEnd=concert_~` (MST prefix query)
 - **Purge All TrackStar Records**: `POST /xrpc/com.atproto.repo.applyWrites` (1-click scripted scan & wipe)
 - **Seed Variety TrackStar Records**: `POST /xrpc/com.atproto.repo.applyWrites` (1-click atomic seed with books, movies, concerts across all lifecycle states)
 
