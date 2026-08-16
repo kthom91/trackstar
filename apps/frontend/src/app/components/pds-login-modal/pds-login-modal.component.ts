@@ -10,25 +10,25 @@ import { DirectMetadataService } from '../../services/direct-metadata.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
-      <div class="bg-[#131b2e] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0e0e0e]/40 backdrop-blur-xs animate-fadeIn">
+      <div class="bg-[#faf7f2] border border-[rgba(14,14,14,0.24)] rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl text-[#0e0e0e]">
         
         <!-- Modal Header -->
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2.5">
-            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-pink-500 flex items-center justify-center text-white font-black text-sm shadow-md">
+        <div class="flex items-center justify-between pb-4 border-b border-[rgba(14,14,14,0.14)]">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-xl bg-[#0e0e0e] flex items-center justify-center text-[#f0ede6] font-bold text-xs shadow-sm">
               t*
             </div>
             <div>
-              <h3 class="text-lg font-bold text-white font-['Outfit']">
+              <h3 class="text-xl font-serif font-bold text-[#0e0e0e]">
                 {{ auth.isAuthenticated() ? 'AT Protocol Account' : 'Connect Your PDS' }}
               </h3>
-              <p class="text-[11px] text-gray-400">
+              <p class="text-[11px] font-mono text-[#9a8f7e]">
                 {{ auth.isAuthenticated() ? 'Connected to personal data repository' : 'Authenticate with your personal data server' }}
               </p>
             </div>
           </div>
-          <button (click)="close.emit()" class="text-gray-400 hover:text-white transition-colors p-1">
+          <button (click)="close.emit()" class="text-[#9a8f7e] hover:text-[#0e0e0e] transition-colors p-1.5 rounded-lg hover:bg-[#0e0e0e]/5">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -37,63 +37,63 @@ import { DirectMetadataService } from '../../services/direct-metadata.service';
 
         <!-- If Already Connected -->
         <div *ngIf="auth.isAuthenticated()" class="space-y-4">
-          <div class="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2">
+          <div class="bg-[#f0ede6] border border-[rgba(14,14,14,0.14)] rounded-xl p-4 space-y-2 font-mono text-xs">
             <div class="flex items-center justify-between">
-              <span class="text-xs text-gray-400">Connected Handle</span>
-              <span class="text-xs font-semibold text-indigo-400 font-mono">{{ auth.currentHandle() }}</span>
+              <span class="text-[#3d3830]">Connected Handle</span>
+              <span class="font-bold text-[#0e0e0e]">{{ auth.currentHandle() }}</span>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-xs text-gray-400">User DID</span>
-              <span class="text-[11px] text-gray-300 font-mono truncate max-w-[200px]" [title]="auth.currentDid()">
+              <span class="text-[#3d3830]">User DID</span>
+              <span class="text-[11px] text-[#9a8f7e] truncate max-w-[200px]" [title]="auth.currentDid()">
                 {{ auth.currentDid() }}
               </span>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-xs text-gray-400">PDS Server</span>
-              <span class="text-xs text-gray-300 font-mono">{{ auth.currentPdsUrl() }}</span>
+              <span class="text-[#3d3830]">PDS Server</span>
+              <span class="text-[#9a8f7e]">{{ auth.currentPdsUrl() }}</span>
             </div>
           </div>
 
           <!-- TMDB API Key Settings -->
-          <div class="space-y-2 pt-2 border-t border-white/5">
-            <div class="flex items-center justify-between">
-              <label class="block text-xs font-semibold text-gray-300">TMDB API Key (Optional)</label>
-              <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" class="text-[10px] text-indigo-400 hover:underline">Get Key ↗</a>
+          <div class="space-y-1.5 pt-2 border-t border-[rgba(14,14,14,0.14)]">
+            <div class="flex items-center justify-between font-mono text-xs">
+              <label class="font-bold uppercase text-[10px] text-[#3d3830] tracking-wider">TMDB API Key (Optional)</label>
+              <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" class="text-[10px] text-[#0e0e0e] hover:underline">Get Key ↗</a>
             </div>
             <input type="text" 
                    [(ngModel)]="tmdbKey" 
                    (ngModelChange)="onTmdbKeyChange()"
                    placeholder="Enter your free TMDB API key for movie posters" 
-                   class="w-full bg-[#0b0f19] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500">
-            <p class="text-[10px] text-gray-500">Stored locally in your browser to enrich movie cover art.</p>
+                   class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2 text-xs text-[#0e0e0e] font-mono placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+            <p class="text-[10px] font-mono text-[#9a8f7e]">Stored locally in your browser to enrich movie cover art.</p>
           </div>
 
           <!-- Last.fm API Key Settings -->
-          <div class="space-y-2 pt-2 border-t border-white/5">
-            <div class="flex items-center justify-between">
-              <label class="block text-xs font-semibold text-gray-300">Last.fm API Key (Optional)</label>
-              <a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener noreferrer" class="text-[10px] text-pink-400 hover:underline">Get Key ↗</a>
+          <div class="space-y-1.5 pt-2 border-t border-[rgba(14,14,14,0.14)]">
+            <div class="flex items-center justify-between font-mono text-xs">
+              <label class="font-bold uppercase text-[10px] text-[#3d3830] tracking-wider">Last.fm API Key (Optional)</label>
+              <a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener noreferrer" class="text-[10px] text-[#0e0e0e] hover:underline">Get Key ↗</a>
             </div>
             <input type="text" 
                    [(ngModel)]="lastfmKey" 
                    (ngModelChange)="onLastfmKeyChange()"
                    placeholder="Enter your free Last.fm API key for band pictures" 
-                   class="w-full bg-[#0b0f19] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-pink-500">
-            <p class="text-[10px] text-gray-500">Stored locally in your browser to enrich concert and band artwork.</p>
+                   class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2 text-xs text-[#0e0e0e] font-mono placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+            <p class="text-[10px] font-mono text-[#9a8f7e]">Stored locally in your browser to enrich concert and band artwork.</p>
           </div>
 
-          <div class="flex items-center justify-between pt-4 border-t border-white/10 gap-2">
+          <div class="flex items-center justify-between pt-4 border-t border-[rgba(14,14,14,0.14)] gap-2 font-mono text-xs">
             <button (click)="syncPds()" [disabled]="repo.loading()"
-                    class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all">
+                    class="px-3.5 py-2 bg-[#0e0e0e] hover:bg-neutral-800 text-[#f0ede6] rounded-xl font-semibold shadow-sm transition-all">
               {{ repo.loading() ? 'Syncing...' : 'Sync Records' }}
             </button>
             <div class="flex items-center space-x-2">
               <button (click)="startReauth()"
-                      class="px-3 py-2 bg-white/10 hover:bg-white/15 text-gray-200 border border-white/10 rounded-xl text-xs font-medium transition-all">
+                      class="px-3 py-2 bg-white hover:bg-neutral-100 text-[#3d3830] border border-[rgba(14,14,14,0.24)] rounded-xl transition-all">
                 Re-authenticate
               </button>
               <button (click)="logout()" 
-                      class="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl text-xs font-medium transition-all">
+                      class="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-900 border border-rose-500/30 rounded-xl transition-all">
                 Disconnect
               </button>
             </div>
@@ -104,62 +104,60 @@ import { DirectMetadataService } from '../../services/direct-metadata.service';
         <form *ngIf="!auth.isAuthenticated()" (ngSubmit)="handleLogin()" class="space-y-4">
           
           <!-- Server Presets -->
-          <div class="space-y-1.5">
-            <label class="block text-xs font-semibold text-gray-300">PDS Server Presets</label>
+          <div class="space-y-1.5 font-mono text-xs">
+            <label class="block text-[10px] font-bold uppercase text-[#3d3830] tracking-wider">PDS Server Presets</label>
             <div class="grid grid-cols-2 gap-2">
               <button type="button" 
                       (click)="setPdsPreset('http://localhost:3000')"
-                      [ngClass]="pdsUrl === 'http://localhost:3000' ? 'bg-indigo-600/30 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-gray-400'"
-                      class="px-3 py-1.5 rounded-xl border text-xs font-medium text-left transition-all">
-                🖥️ Local PDS (:3000)
+                      [ngClass]="pdsUrl === 'http://localhost:3000' ? 'bg-[#0e0e0e] border-[#0e0e0e] text-[#f0ede6] font-bold' : 'bg-white border-[rgba(14,14,14,0.24)] text-[#3d3830]'"
+                      class="px-3 py-2 rounded-xl border text-left transition-all">
+                🖥️ Local (:3000)
               </button>
               <button type="button" 
                       (click)="setPdsPreset('https://bsky.social')"
-                      [ngClass]="pdsUrl === 'https://bsky.social' ? 'bg-indigo-600/30 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-gray-400'"
-                      class="px-3 py-1.5 rounded-xl border text-xs font-medium text-left transition-all">
-                🦋 Bluesky (bsky.social)
+                      [ngClass]="pdsUrl === 'https://bsky.social' ? 'bg-[#0e0e0e] border-[#0e0e0e] text-[#f0ede6] font-bold' : 'bg-white border-[rgba(14,14,14,0.24)] text-[#3d3830]'"
+                      class="px-3 py-2 rounded-xl border text-left transition-all">
+                🦋 Bluesky (bsky)
               </button>
             </div>
           </div>
 
           <!-- PDS URL -->
-          <div class="space-y-1.5">
-            <label class="block text-xs font-semibold text-gray-300">PDS Endpoint</label>
+          <div class="space-y-1 font-mono text-xs">
+            <label class="block text-[10px] font-bold uppercase text-[#3d3830] tracking-wider">PDS Endpoint</label>
             <input type="url" 
                    [(ngModel)]="pdsUrl" 
                    name="pdsUrl" 
                    required
                    placeholder="http://localhost:3000"
-                   class="w-full bg-[#0b0f19] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500">
+                   class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2 text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
           </div>
 
           <!-- Identifier -->
-          <div class="space-y-1.5">
-            <label class="block text-xs font-semibold text-gray-300">Handle or Email</label>
+          <div class="space-y-1 font-mono text-xs">
+            <label class="block text-[10px] font-bold uppercase text-[#3d3830] tracking-wider">Handle or Email</label>
             <input type="text" 
                    [(ngModel)]="identifier" 
                    name="identifier" 
                    required
                    placeholder="kentrain.trackstar.test or alice.bsky.social"
-                   class="w-full bg-[#0b0f19] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500">
+                   class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2 text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
           </div>
 
           <!-- Password / App Password -->
-          <div class="space-y-1.5">
-            <div class="flex items-center justify-between">
-              <label class="block text-xs font-semibold text-gray-300">Password / App Password</label>
-            </div>
+          <div class="space-y-1 font-mono text-xs">
+            <label class="block text-[10px] font-bold uppercase text-[#3d3830] tracking-wider">Password / App Password</label>
             <input type="password" 
                    [(ngModel)]="password" 
                    name="password" 
                    required
                    placeholder="••••••••••••"
-                   class="w-full bg-[#0b0f19] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500">
-            <p class="text-[10px] text-gray-500">For Bluesky accounts, use an App Password generated in Settings &gt; App Passwords.</p>
+                   class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2 text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+            <p class="text-[10px] text-[#9a8f7e]">For Bluesky accounts, use an App Password generated in Settings &gt; App Passwords.</p>
           </div>
 
           <!-- Error Message -->
-          <div *ngIf="errorMessage" class="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300">
+          <div *ngIf="errorMessage" class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl font-mono text-xs text-rose-900">
             {{ errorMessage }}
           </div>
 
@@ -167,8 +165,8 @@ import { DirectMetadataService } from '../../services/direct-metadata.service';
           <div class="pt-2">
             <button type="submit" 
                     [disabled]="submitting || !identifier || !password"
-                    class="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 disabled:opacity-50 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center space-x-2">
-              <div *ngIf="submitting" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    class="w-full py-2.5 bg-[#0e0e0e] hover:bg-neutral-800 disabled:opacity-40 text-[#f0ede6] font-mono font-semibold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center space-x-2">
+              <div *ngIf="submitting" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               <span>{{ submitting ? 'Connecting to PDS...' : 'Connect to PDS' }}</span>
             </button>
           </div>

@@ -15,7 +15,13 @@
     "target": "ES2022",
     "baseUrl": ".",
     "paths": {
-      "@trackstar/data": ["packages/data/src/index.ts"]
+      "@trackstar/data": ["packages/data/src/index.ts"],
+      "@trackstar/theme": ["packages/theme/src/index.ts"],
+      "@trackstar/theme/*": ["packages/theme/src/*"],
+      "@trackstar/integrations": ["packages/integrations/src/index.ts"],
+      "@trackstar/integrations/*": ["packages/integrations/src/*"],
+      "@trackstar/pds": ["packages/pds/src/index.ts"],
+      "@trackstar/pds/*": ["packages/pds/src/*"]
     }
   }
 }

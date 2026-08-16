@@ -2,24 +2,13 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { PdsAuthService } from './pds-auth.service';
 import { DirectMetadataService, EnrichedMetadata } from './direct-metadata.service';
 import { ModalService } from './modal.service';
-import { PdsMediaItem, PdsUserLog, CreateLogPayload } from '@trackstar/data';
+import { PdsMediaItem, PdsUserLog, CreateLogPayload, generateTid, makeRkeySafe, LEXICONS } from '@trackstar/pds';
 import { BskyAgent } from '@atproto/api';
 
 export type { PdsMediaItem, PdsUserLog, CreateLogPayload };
 
 const CACHE_LOGS_KEY = 'trackstar_cached_logs';
 const CACHE_MEDIA_KEY = 'trackstar_cached_media';
-
-function makeRkeySafe(text: string): string {
-  return text.replace(/[^a-zA-Z0-9.\-_~]/g, '_').slice(0, 512);
-}
-
-function generateTid(): string {
-  // Generates AT Protocol timestamp identifier (TID)
-  const now = Date.now();
-  const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `3${now.toString(36)}${rand}`;
-}
 
 @Injectable({
   providedIn: 'root'

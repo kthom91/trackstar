@@ -9,7 +9,9 @@
   "scripts": {
     "serve": "nx serve frontend",
     "build": "nx build frontend",
-    "build:extension": "nx build browser-extension"
+    "build:extension": "nx build browser-extension",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@angular/animations": "^21.0.0-build.202502",
@@ -35,10 +37,12 @@
     "@angular/cli": "^21.0.0-build.202502",
     "@angular/compiler-cli": "^21.0.0-build.202502",
     "@types/chrome": "^0.0.308",
+    "@vitest/coverage-v8": "^4.1.10",
     "autoprefixer": "^10.4.19",
     "nx": "~23.1.1",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.10"
   }
 }

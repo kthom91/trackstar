@@ -1,6 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
 import {
-  PdsConfig,
   ExtensionMediaItem,
   LetterboxdRssItem,
   RssPollState,
@@ -8,6 +7,13 @@ import {
   BatchIngestResult,
   IntegrationDefinition
 } from '@trackstar/data';
+import { PdsConfig } from '@trackstar/pds';
+import {
+  IntegrationProvider,
+  getProvider,
+  getAllProviders,
+  NormalizedMediaEntry
+} from '@trackstar/integrations';
 
 @Injectable({
   providedIn: 'root'

@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { BskyAgent, AtpSessionData, AtpSessionEvent } from '@atproto/api';
-import { PdsUserSession } from '@trackstar/data';
+import { PdsUserSession } from '@trackstar/pds';
 
 export type { PdsUserSession };
 

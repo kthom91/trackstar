@@ -11,7 +11,7 @@ export const routes: Routes = [
   },
   {
     path: 'want-to-consume',
-    redirectTo: ''
+    loadComponent: () => import('./pages/want-to-consume/want-to-consume.component').then(m => m.WantToConsumeComponent)
   },
   {
     path: 'importers',

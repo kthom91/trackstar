@@ -10,14 +10,12 @@
   justify-content: space-between;
   gap: 16px;
   padding: 12px 18px;
-  border-radius: 16px;
-  background: rgba(19, 27, 46, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 20px rgba(99, 102, 241, 0.25);
-  color: #f3f4f6;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  border-radius: 14px;
+  background: #faf7f2;
+  border: 1px solid rgba(14, 14, 14, 0.24);
+  box-shadow: 0 12px 32px rgba(14, 14, 14, 0.12);
+  color: #0e0e0e;
+  font-family: 'DM Mono', monospace, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   animation: trackstar-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   max-width: 480px;
@@ -46,9 +44,9 @@
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
   padding: 3px 8px !important;
-  border-radius: 8px !important;
-  background: linear-gradient(135deg, #6366f1, #ec4899) !important;
-  color: #ffffff !important;
+  border-radius: 6px !important;
+  background: #0e0e0e !important;
+  color: #f0ede6 !important;
   white-space: nowrap !important;
   line-height: 1.4 !important;
   display: inline-block !important;
@@ -56,21 +54,21 @@
 
 .trackstar-msg {
   font-weight: 500;
-  color: #e5e7eb;
+  color: #0e0e0e;
 }
 
 .trackstar-success .trackstar-msg {
-  color: #6ee7b7;
+  color: #2b6e3b;
 }
 
 .trackstar-warn .trackstar-msg {
-  color: #fcd34d;
+  color: #854d0e;
 }
 
 #trackstar-banner-close {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #9a8f7e;
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
@@ -79,23 +77,13 @@
 }
 
 #trackstar-banner-close:hover {
-  color: #ffffff;
+  color: #0e0e0e;
 }
 
 /* Highlighted Button */
 .trackstar-highlight-btn {
   position: relative;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6), 0 0 25px rgba(236, 72, 153, 0.4) !important;
-  animation: trackstar-pulse-glow 2s infinite alternate !important;
-}
-
-@keyframes trackstar-pulse-glow {
-  0% {
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4), 0 0 15px rgba(99, 102, 241, 0.3);
-  }
-  100% {
-    box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.7), 0 0 30px rgba(236, 72, 153, 0.6);
-  }
+  box-shadow: 0 0 0 2px #0e0e0e, 0 0 15px rgba(14, 14, 14, 0.25) !important;
 }
 
 /* =========================================================================
@@ -105,12 +93,12 @@
   box-sizing: border-box !important;
   margin: 20px 0 28px 0 !important;
   padding: 22px 24px !important;
-  border-radius: 18px !important;
-  background: #131b2e !important;
-  border: 1px solid rgba(99, 102, 241, 0.3) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99, 102, 241, 0.15) !important;
-  color: #e5e7eb !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  border-radius: 16px !important;
+  background: #faf7f2 !important;
+  border: 1px solid rgba(14, 14, 14, 0.24) !important;
+  box-shadow: 0 8px 24px rgba(14, 14, 14, 0.08) !important;
+  color: #0e0e0e !important;
+  font-family: 'DM Mono', monospace, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   display: block !important;
   width: 100% !important;
 }
@@ -137,46 +125,47 @@
   height: 32px !important;
   min-width: 32px !important;
   min-height: 32px !important;
-  border-radius: 10px !important;
-  background: linear-gradient(135deg, #6366f1, #ec4899) !important;
-  color: #ffffff !important;
+  border-radius: 8px !important;
+  background: #0e0e0e !important;
+  color: #f0ede6 !important;
   font-weight: 800 !important;
   font-size: 14px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(14, 14, 14, 0.2) !important;
   line-height: 1 !important;
 }
 
 .trackstar-card-title {
+  font-family: 'Lora', Georgia, serif !important;
   font-size: 16px !important;
   font-weight: 700 !important;
-  color: #ffffff !important;
+  color: #0e0e0e !important;
   margin: 0 !important;
   line-height: 1.2 !important;
 }
 
 .trackstar-card-subtitle {
   font-size: 11px !important;
-  color: #9ca3af !important;
+  color: #9a8f7e !important;
   margin: 2px 0 0 0 !important;
   line-height: 1.3 !important;
 }
 
 .trackstar-card-desc {
   font-size: 13px !important;
-  color: #d1d5db !important;
+  color: #3d3830 !important;
   line-height: 1.5 !important;
   margin-bottom: 16px !important;
 }
 
 /* Progress Area */
 .trackstar-progress-area {
-  background: #0b0f19 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: #f0ede6 !important;
+  border: 1px solid rgba(14, 14, 14, 0.14) !important;
   padding: 12px 14px !important;
-  border-radius: 12px !important;
+  border-radius: 10px !important;
   margin-bottom: 16px !important;
 }
 
@@ -185,14 +174,14 @@
   justify-content: space-between !important;
   font-size: 12px !important;
   font-weight: 600 !important;
-  color: #e5e7eb !important;
+  color: #0e0e0e !important;
   margin-bottom: 8px !important;
 }
 
 .trackstar-progress-bar-bg {
   width: 100% !important;
   height: 8px !important;
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(14, 14, 14, 0.1) !important;
   border-radius: 4px !important;
   overflow: hidden !important;
 }
@@ -200,7 +189,7 @@
 .trackstar-progress-bar-fill {
   height: 100% !important;
   width: 0% !important;
-  background: linear-gradient(90deg, #6366f1, #ec4899) !important;
+  background: #0e0e0e !important;
   border-radius: 4px !important;
   transition: width 0.25s ease !important;
 }
@@ -208,22 +197,22 @@
 /* Status Message */
 .trackstar-status-msg {
   padding: 12px 14px !important;
-  border-radius: 12px !important;
+  border-radius: 10px !important;
   font-size: 12px !important;
   line-height: 1.4 !important;
   margin-bottom: 16px !important;
 }
 
 .trackstar-status-success {
-  background: rgba(16, 185, 129, 0.15) !important;
-  border: 1px solid rgba(16, 185, 129, 0.3) !important;
-  color: #a7f3d0 !important;
+  background: #eef8ee !important;
+  border: 1px solid #c3e6cb !important;
+  color: #1e5e2e !important;
 }
 
 .trackstar-status-error {
-  background: rgba(239, 68, 68, 0.15) !important;
-  border: 1px solid rgba(239, 68, 68, 0.3) !important;
-  color: #fca5a5 !important;
+  background: #fdf2f2 !important;
+  border: 1px solid #f8d7da !important;
+  color: #842029 !important;
 }
 
 /* Action Buttons */
@@ -235,10 +224,10 @@
 }
 
 .trackstar-btn {
-  padding: 9px 16px !important;
-  border-radius: 10px !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
   font-size: 12px !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   cursor: pointer !important;
   border: none !important;
   text-decoration: none !important;
@@ -251,25 +240,24 @@
 }
 
 .trackstar-btn-primary {
-  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
+  background: #0e0e0e !important;
+  color: #f0ede6 !important;
+  box-shadow: 0 2px 8px rgba(14, 14, 14, 0.2) !important;
 }
 
 .trackstar-btn-primary:hover {
-  background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+  background: #262626 !important;
   transform: translateY(-1px) !important;
 }
 
 .trackstar-btn-secondary {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #e5e7eb !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: #f0ede6 !important;
+  color: #0e0e0e !important;
+  border: 1px solid rgba(14, 14, 14, 0.24) !important;
 }
 
 .trackstar-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-  color: #ffffff !important;
+  background: #e4dfd5 !important;
 }
 
 .trackstar-btn:disabled {

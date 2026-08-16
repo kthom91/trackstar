@@ -7,27 +7,25 @@
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "ng build",
-        "cwd": "apps/frontend"
+        "command": "npx ng build frontend"
       },
       "configurations": {
         "production": {
-          "command": "ng build --configuration production"
+          "command": "npx ng build frontend --configuration production"
         },
         "development": {
-          "command": "ng build --configuration development"
+          "command": "npx ng build frontend --configuration development"
         }
       }
     },
     "serve": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "ng serve",
-        "cwd": "apps/frontend"
+        "command": "npx ng serve frontend"
       },
       "configurations": {
         "production": {
-          "command": "ng serve --configuration production"
+          "command": "npx ng serve frontend --configuration production"
         }
       }
     }

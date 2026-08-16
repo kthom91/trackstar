@@ -1,5 +1,5 @@
 import { Component, inject, output } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { PdsAuthService } from '../../services/pds-auth.service';
 
@@ -8,41 +8,64 @@ import { PdsAuthService } from '../../services/pds-auth.service';
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive],
   template: `
-    <header class="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0b0f19]/80 backdrop-blur-md">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header class="sticky top-0 z-40 w-full border-b border-[rgba(14,14,14,0.14)] bg-[#faf7f2] backdrop-blur-md relative">
+      
+      <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         
-        <!-- Brand / Logo -->
-        <div class="flex items-center space-x-3">
-          <a routerLink="/" class="flex items-center space-x-2 group">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform duration-200">
-              <span class="text-white font-black text-lg tracking-tighter">t*</span>
+        <!-- Brand / Logo & Dynamic Compact Breadcrumb -->
+        <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          <a routerLink="/" class="flex items-center space-x-3 group shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-[#0e0e0e] flex items-center justify-center text-[#f0ede6] font-bold text-sm shadow-sm group-hover:scale-105 transition-transform duration-200 shrink-0">
+              <span>t*</span>
             </div>
-            <div class="flex flex-col">
-              <span class="font-bold text-lg tracking-tight text-white font-['Outfit']">TrackStar</span>
-              <span class="text-[10px] text-indigo-400 font-mono tracking-widest uppercase -mt-1">PDS Media Client</span>
+
+            <!-- Full Wordmark (visible on desktop >= 1000px nav breakpoint) -->
+            <div class="hidden nav:flex flex-col">
+              <span class="font-serif font-bold text-xl tracking-tight text-[#0e0e0e] leading-none">TrackStar</span>
+              <span class="text-[9px] text-[#9a8f7e] font-mono tracking-[0.22em] uppercase mt-0.5">MEDIA TRACKER</span>
             </div>
           </a>
+
+          <!-- Mobile / Tablet Breadcrumb Page Indicator (< 1000px nav breakpoint) -->
+          <div class="nav:hidden flex items-center space-x-1.5 font-mono text-xs text-[#9a8f7e] min-w-0">
+            <span class="text-[rgba(14,14,14,0.3)] font-sans text-sm select-none">/</span>
+            
+            <!-- Active Page Pill with quick dropdown toggle -->
+            <button (click)="toggleMobileMenu()"
+                    title="Switch View"
+                    class="flex items-center space-x-1 px-2 py-1 rounded-lg bg-[rgba(14,14,14,0.06)] hover:bg-[rgba(14,14,14,0.1)] text-[#0e0e0e] font-bold transition-colors truncate max-w-[150px] sm:max-w-[220px]">
+              <span class="truncate">{{ currentPageTitle }}</span>
+              <svg class="w-3 h-3 text-[#9a8f7e] shrink-0 ml-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <!-- Navigation Links -->
-        <nav class="flex items-center space-x-1 sm:space-x-2">
+        <!-- Navigation Links (visible at >= 1000px nav breakpoint) -->
+        <nav class="hidden nav:flex items-center space-x-6 lg:space-x-8 font-mono text-xs">
           <a routerLink="/" 
-             routerLinkActive="bg-indigo-500/10 text-indigo-400 border-indigo-500/30" 
+             routerLinkActive="text-[#0e0e0e] font-bold border-b-2 border-[#0e0e0e] pb-0.5" 
              [routerLinkActiveOptions]="{exact: true}"
-             class="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 border border-transparent transition-all">
+             class="text-[#3d3830] hover:text-[#0e0e0e] transition-colors py-1">
             Media Feed
           </a>
 
+          <a routerLink="/want-to-consume" 
+             routerLinkActive="text-[#0e0e0e] font-bold border-b-2 border-[#0e0e0e] pb-0.5" 
+             class="text-[#3d3830] hover:text-[#0e0e0e] transition-colors py-1">
+            Want to Consume
+          </a>
 
           <a routerLink="/importers" 
-             routerLinkActive="bg-indigo-500/10 text-indigo-400 border-indigo-500/30" 
-             class="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 border border-transparent transition-all">
+             routerLinkActive="text-[#0e0e0e] font-bold border-b-2 border-[#0e0e0e] pb-0.5" 
+             class="text-[#3d3830] hover:text-[#0e0e0e] transition-colors py-1">
             Import & Sync
           </a>
 
           <a routerLink="/get-started" 
-             routerLinkActive="bg-indigo-500/10 text-indigo-400 border-indigo-500/30" 
-             class="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 border border-transparent transition-all">
+             routerLinkActive="text-[#0e0e0e] font-bold border-b-2 border-[#0e0e0e] pb-0.5" 
+             class="text-[#3d3830] hover:text-[#0e0e0e] transition-colors py-1">
             Get Started
           </a>
         </nav>
@@ -50,44 +73,93 @@ import { PdsAuthService } from '../../services/pds-auth.service';
         <!-- Actions & PDS Auth -->
         <div class="flex items-center space-x-2 sm:space-x-3">
           
-          <!-- PDS Status / Account Pill + Sync Button -->
-          <div class="flex items-center space-x-1.5">
-            <button (click)="openPdsModal.emit()"
-                    class="flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium transition-all">
-              <span class="w-2 h-2 rounded-full" [ngClass]="auth.isAuthenticated() ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50 animate-pulse' : 'bg-amber-400'"></span>
-              <span class="text-gray-200 font-mono truncate max-w-[120px] sm:max-w-[150px]">
-                {{ auth.isAuthenticated() ? auth.currentHandle() : 'Connect PDS' }}
-              </span>
-            </button>
+          <!-- PDS Status / Account Pill (collapses to just status dot at smaller widths) -->
+          <button (click)="openPdsModal.emit()"
+                  [title]="auth.isAuthenticated() ? auth.currentHandle() : 'Connect PDS'"
+                  class="flex items-center space-x-2 px-2.5 sm:px-3.5 py-1.5 rounded-full border border-[rgba(14,14,14,0.24)] bg-[#faf7f2]/90 hover:bg-[#f0ede6] text-xs font-mono text-[#0e0e0e] transition-all shadow-sm">
+            <span class="w-2 h-2 rounded-full shrink-0" [ngClass]="auth.isAuthenticated() ? 'bg-[#5a8a5a]' : 'bg-[#9a8f7e]'"></span>
+            <span class="hidden sm:inline truncate max-w-[130px] md:max-w-[180px]">
+              {{ auth.isAuthenticated() ? auth.currentHandle() : 'Connect PDS' }}
+            </span>
+          </button>
 
-            <!-- Sync from PDS Button -->
-            <button (click)="syncPds.emit()"
-                    title="Sync from PDS"
-                    class="p-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-              </svg>
-            </button>
-          </div>
-
-          <!-- Log Media Button (icon only) -->
-          <button (click)="openLogModal.emit()"
-                  title="Log Media"
-                  class="w-8 h-8 flex items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          <!-- Sync from PDS Button (Equalizer / Sliders Icon) -->
+          <button (click)="syncPds.emit()"
+                  title="Sync from PDS"
+                  class="w-8 h-8 rounded-full border border-[rgba(14,14,14,0.24)] bg-[#faf7f2]/90 hover:bg-[#f0ede6] text-[#3d3830] hover:text-[#0e0e0e] flex items-center justify-center transition-all shadow-sm shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16M8 5v6m8 5v6"></path>
             </svg>
           </button>
+
+          <!-- Log Media Button (Solid Black Circle +) -->
+          <button (click)="openLogModal.emit()"
+                  title="Log Media Entry"
+                  class="w-8 h-8 flex items-center justify-center rounded-full bg-[#0e0e0e] hover:bg-neutral-800 text-[#f0ede6] shadow-sm transition-all active:scale-95 shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+            </svg>
+          </button>
+
         </div>
 
       </div>
+
+      <!-- Collapsed Navigation Dropdown Drawer (< 1000px) -->
+      <div *ngIf="isMobileMenuOpen" 
+           class="nav:hidden border-t border-[rgba(14,14,14,0.14)] bg-[#faf7f2] px-4 py-3 space-y-1 font-mono text-xs shadow-lg animate-fadeIn relative z-20">
+        <a routerLink="/" 
+           (click)="isMobileMenuOpen = false"
+           routerLinkActive="bg-[#0e0e0e] text-[#f0ede6] font-bold" 
+           [routerLinkActiveOptions]="{exact: true}"
+           class="block px-3.5 py-2.5 rounded-xl text-[#3d3830] hover:text-[#0e0e0e] hover:bg-[rgba(14,14,14,0.05)] transition-all">
+          Media Feed
+        </a>
+
+        <a routerLink="/want-to-consume" 
+           (click)="isMobileMenuOpen = false"
+           routerLinkActive="bg-[#0e0e0e] text-[#f0ede6] font-bold" 
+           class="block px-3.5 py-2.5 rounded-xl text-[#3d3830] hover:text-[#0e0e0e] hover:bg-[rgba(14,14,14,0.05)] transition-all">
+          Want to Consume
+        </a>
+
+        <a routerLink="/importers" 
+           (click)="isMobileMenuOpen = false"
+           routerLinkActive="bg-[#0e0e0e] text-[#f0ede6] font-bold" 
+           class="block px-3.5 py-2.5 rounded-xl text-[#3d3830] hover:text-[#0e0e0e] hover:bg-[rgba(14,14,14,0.05)] transition-all">
+          Import & Sync
+        </a>
+
+        <a routerLink="/get-started" 
+           (click)="isMobileMenuOpen = false"
+           routerLinkActive="bg-[#0e0e0e] text-[#f0ede6] font-bold" 
+           class="block px-3.5 py-2.5 rounded-xl text-[#3d3830] hover:text-[#0e0e0e] hover:bg-[rgba(14,14,14,0.05)] transition-all">
+          Get Started
+        </a>
+      </div>
+
     </header>
   `
 })
 export class NavbarComponent {
   auth = inject(PdsAuthService);
+  router = inject(Router);
 
   openLogModal = output<void>();
   openPdsModal = output<void>();
   syncPds = output<void>();
+
+  isMobileMenuOpen = false;
+
+  get currentPageTitle(): string {
+    const url = this.router.url.split('?')[0];
+    if (url.startsWith('/want-to-consume')) return 'Want to Consume';
+    if (url.startsWith('/importers')) return 'Import & Sync';
+    if (url.startsWith('/get-started')) return 'Get Started';
+    return 'Media Feed';
+  }
+
+  toggleMobileMenu(): void {
+    this.isMobileMenuOpen = !this.isMobileMenuOpen;
+  }
 }
