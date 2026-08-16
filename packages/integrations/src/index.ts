@@ -6,3 +6,4 @@ export * from './lib/providers/storygraph.provider';
 export * from './lib/providers/goodreads.provider';
 export * from './lib/providers/setlistfm.provider';
 export * from './lib/providers/teal.provider';
+export * from './lib/metadata-resolver';

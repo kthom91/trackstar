@@ -131,11 +131,19 @@ export class PdsRepoService {
             }
             const normalizedSource = rawSource || 'trackstar';
 
+            const previousLog = this.logs().find(l => l.id === rkey || l.mediaItemId === rawId);
+            const cachedMeta = previousLog ? (previousLog.metadata || previousLog.metadataJson || {}) : {};
+
+            const mergedMetadata: Record<string, any> = {
+              ...cachedMeta,
+              ...metadata
+            };
+
             const mediaItem: PdsMediaItem = {
               id: rawId,
               mediaType: mediaType,
               title: title,
-              metadataJson: metadata,
+              metadataJson: mergedMetadata,
               createdAt: val.loggedAt || val.createdAt,
               atUri: rec.uri,
               rkey: rkey
@@ -156,8 +164,8 @@ export class PdsRepoService {
               startedAt: val.startedAt,
               source: normalizedSource,
               sourceDisplayName: getSourceDisplayName(normalizedSource, mediaType),
-              metadata: metadata,
-              metadataJson: metadata,
+              metadata: mergedMetadata,
+              metadataJson: mergedMetadata,
               mediaItem: mediaItem
             };
 
@@ -207,16 +215,13 @@ export class PdsRepoService {
 
     if (toEnrich.length === 0) return;
 
-    toEnrich.forEach(log => {
-      const key = log.id || log.mediaItemId || '';
-      if (key) this.enrichedIds.add(key);
-    });
-
     for (const log of toEnrich) {
       const meta = { ...(log.metadata || log.metadataJson || {}) };
 
       try {
         const enriched = await this.metadataService.resolveMetadata(log.mediaType, log.title, log.mediaItemId || log.id);
+        const key = log.id || log.mediaItemId || '';
+
         if (enriched && enriched.coverUrl) {
           const updatedMeta: Record<string, any> = {
             ...meta,
@@ -237,36 +242,10 @@ export class PdsRepoService {
             log.mediaItem.metadataJson = updatedMeta;
           }
 
+          if (key) this.enrichedIds.add(key);
           hasUpdates = true;
-
-          // Persist enriched record back to PDS
-          if (this.auth.isAuthenticated()) {
-            this.executeWithAuth(async (agent, repo) => {
-              const sanitizedRecord = sanitizeAtprotoRecord({
-                $type: 'app.trackstar.log',
-                mediaType: log.mediaType,
-                title: log.title,
-                status: log.status,
-                rating: sanitizeRating(log.rating),
-                review: log.review?.trim() || undefined,
-                loggedAt: log.loggedAt,
-                completedAt: log.completedAt,
-                startedAt: log.startedAt,
-                source: log.source || 'trackstar',
-                metadata: updatedMeta,
-                metadataJson: updatedMeta
-              });
-
-              await agent.com.atproto.repo.putRecord({
-                collection: 'app.trackstar.log',
-                repo: repo,
-                rkey: log.id,
-                record: sanitizedRecord
-              });
-            }).catch(pdsErr => {
-              console.warn('[PdsRepo] Background PDS log enrichment save skipped:', pdsErr);
-            });
-          }
+        } else if (key && Object.keys(enriched || {}).length > 0) {
+          if (key) this.enrichedIds.add(key);
         }
       } catch {
         // silently continue

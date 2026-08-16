@@ -123,6 +123,34 @@ import { getProvider, getAllProviders, IntegrationProvider } from '@trackstar/in
             </button>
           </div>
 
+          <!-- TMDB API Key Settings -->
+          <div class="space-y-1 pt-2 border-t border-[rgba(14,14,14,0.14)] font-mono text-xs">
+            <div class="flex items-center justify-between">
+              <label class="font-bold uppercase text-[9px] text-[#3d3830] tracking-wider">TMDB API Key (Optional)</label>
+              <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" class="text-[9px] text-[#0e0e0e] hover:underline">Get Key ↗</a>
+            </div>
+            <input type="text" 
+                   [(ngModel)]="tmdbApiKey" 
+                   (ngModelChange)="onTmdbKeyChange()"
+                   placeholder="Free TMDB API key for movie posters" 
+                   class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-md px-2.5 py-1 text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+            <p class="text-[9px] text-[#9a8f7e]">Enriches movie cover art and metadata.</p>
+          </div>
+
+          <!-- Last.fm API Key Settings -->
+          <div class="space-y-1 pt-1.5 border-t border-[rgba(14,14,14,0.14)] font-mono text-xs">
+            <div class="flex items-center justify-between">
+              <label class="font-bold uppercase text-[9px] text-[#3d3830] tracking-wider">Last.fm API Key (Optional)</label>
+              <a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener noreferrer" class="text-[9px] text-[#0e0e0e] hover:underline">Get Key ↗</a>
+            </div>
+            <input type="text" 
+                   [(ngModel)]="lastfmApiKey" 
+                   (ngModelChange)="onLastfmKeyChange()"
+                   placeholder="Free Last.fm API key for band pictures" 
+                   class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-md px-2.5 py-1 text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+            <p class="text-[9px] text-[#9a8f7e]">Enriches concert and band artwork.</p>
+          </div>
+
           <!-- If connected, show disconnect option -->
           <div *ngIf="bridge.isConnected()" class="pt-1.5 border-t border-[rgba(14,14,14,0.14)]">
             <button (click)="logout()"
@@ -389,6 +417,8 @@ export class AppComponent {
   pdsUrl = 'http://localhost:3000';
   handle = '';
   password = '';
+  tmdbApiKey = '';
+  lastfmApiKey = '';
   rssInputUsername = '';
   setlistInputUsername = '';
   setlistInputApiKey = '';
@@ -405,6 +435,27 @@ export class AppComponent {
     this.rssInputUsername = this.bridge.lbRssUsername() || '';
     this.setlistInputUsername = this.bridge.setlistUsername() || '';
     this.setlistInputApiKey = this.bridge.setlistApiKey() || '';
+
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      chrome.storage.local.get(['tmdbApiKey', 'lastfmApiKey'], data => {
+        if (data?.tmdbApiKey) this.tmdbApiKey = data.tmdbApiKey;
+        if (data?.lastfmApiKey) this.lastfmApiKey = data.lastfmApiKey;
+      });
+    }
+  }
+
+  async onTmdbKeyChange() {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      await chrome.storage.local.set({ tmdbApiKey: this.tmdbApiKey.trim() });
+      await this.bridge.fetchAllMedia();
+    }
+  }
+
+  async onLastfmKeyChange() {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      await chrome.storage.local.set({ lastfmApiKey: this.lastfmApiKey.trim() });
+      await this.bridge.fetchAllMedia();
+    }
   }
 
   async syncSetlist() {

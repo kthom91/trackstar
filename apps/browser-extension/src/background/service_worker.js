@@ -1,4 +1,5 @@
 // Trackstar Chrome Extension - Background Service Worker (PDS Architecture)
+import { MetadataResolver } from '@trackstar/integrations';
 
 const DEFAULT_PDS_CONFIG = {
   pdsUrl: 'http://localhost:3000',
@@ -369,6 +370,35 @@ async function fetchAllMediaLogs() {
       metadata: metadata
     });
   });
+
+  // Read stored API keys for on-demand in-memory metadata enrichment
+  try {
+    const { tmdbApiKey, lastfmApiKey } = await chrome.storage.local.get(['tmdbApiKey', 'lastfmApiKey']);
+    const resolver = new MetadataResolver(() => ({ tmdbApiKey, lastfmApiKey }));
+
+    for (const item of items) {
+      if (!item.coverUrl || !item.author || !item.year) {
+        try {
+          const enriched = await resolver.resolveMetadata(item.mediaType, item.title, item.mediaItemId);
+          if (enriched) {
+            if (!item.coverUrl && enriched.coverUrl) {
+              item.coverUrl = enriched.coverUrl;
+            }
+            if (!item.author && enriched.creator) {
+              item.author = enriched.creator;
+            }
+            if (!item.year && enriched.year) {
+              item.year = String(enriched.year);
+            }
+          }
+        } catch {
+          // Silently skip if lookup fails
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Metadata enrichment error:', e);
+  }
 
   items.sort((a, b) => new Date(b.completedAt || b.loggedAt || 0) - new Date(a.completedAt || a.loggedAt || 0));
   return items;

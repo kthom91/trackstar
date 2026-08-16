@@ -248,20 +248,41 @@ export class DirectMetadataService {
     return [];
   }
 
+  // In-memory lookup cache to prevent duplicate network calls
+  private cache = new Map<string, EnrichedMetadata>();
+
   // =========================================================================
   // METADATA RESOLUTION (BY TITLE / HINT)
   // =========================================================================
   async resolveMetadata(mediaType: string, title: string, hintId?: string): Promise<EnrichedMetadata> {
-    switch (mediaType) {
-      case 'book':
-        return this.resolveBookMetadata(title, hintId);
-      case 'movie':
-        return this.resolveMovieMetadata(title, hintId);
-      case 'concert':
-        return this.resolveConcertMetadata(title, hintId);
-      default:
-        return {};
+    const cleanTitle = title?.trim() || '';
+    if (!cleanTitle) return {};
+
+    const cacheKey = `${mediaType?.toLowerCase()}:${(hintId || cleanTitle).toLowerCase().trim()}`;
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)!;
     }
+
+    let result: EnrichedMetadata = {};
+
+    switch (mediaType?.toLowerCase()) {
+      case 'book':
+        result = await this.resolveBookMetadata(cleanTitle, hintId);
+        break;
+      case 'movie':
+      case 'film':
+        result = await this.resolveMovieMetadata(cleanTitle, hintId);
+        break;
+      case 'concert':
+      case 'live':
+        result = await this.resolveConcertMetadata(cleanTitle, hintId);
+        break;
+      default:
+        result = {};
+    }
+
+    this.cache.set(cacheKey, result);
+    return result;
   }
 
   // 1. Books: Open Library API (CORS enabled, completely free)
@@ -365,7 +386,7 @@ export class DirectMetadataService {
     return {};
   }
 
-  // 3. Concerts: Last.fm Metadata Resolver
+  // 3. Concerts: Last.fm Metadata Resolver (Single artist info lookup)
   async resolveConcertMetadata(title: string, hintId?: string): Promise<EnrichedMetadata> {
     const cleanArtist = this.extractArtistName(title);
     if (!cleanArtist) {
@@ -384,21 +405,7 @@ export class DirectMetadataService {
         const res: any = await firstValueFrom(this.http.get(artistUrl));
         if (res && res.artist) {
           const artist = res.artist;
-          let coverUrl = this.extractLastfmImage(artist.image);
-
-          // If artist image is absent or placeholder, fetch top album cover as visual artwork
-          if (!coverUrl) {
-            try {
-              const albumUrl = `https://ws.audioscrobbler.com/2.0/?method=artist.gettopalbums&artist=${encodeURIComponent(artist.name || cleanArtist)}&api_key=${apiKey}&format=json&limit=1`;
-              const albumRes: any = await firstValueFrom(this.http.get(albumUrl));
-              const topAlbum = albumRes?.topalbums?.album?.[0] || albumRes?.topalbums?.album;
-              if (topAlbum?.image) {
-                coverUrl = this.extractLastfmImage(topAlbum.image);
-              }
-            } catch {
-              // Ignore album fetch errors
-            }
-          }
+          const coverUrl = this.extractLastfmImage(artist.image);
 
           let genres: string[] | undefined = undefined;
           if (artist.tags?.tag) {
