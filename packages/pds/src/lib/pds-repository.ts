@@ -1,5 +1,6 @@
 import { LEXICONS } from './lexicons';
 import { generateTid, makeRkeySafe } from './tid';
+import { sanitizeAtprotoRecord, sanitizeRating } from './sanitize';
 import { PdsMediaItem, PdsUserLog, CreateLogPayload, AtpRecord } from './types';
 import { PdsXrpcClient } from './xrpc-client';
 
@@ -77,30 +78,35 @@ export class PdsRepositoryCore {
     }
 
     const mediaRkey = makeRkeySafe(mediaItemId);
-    const mediaRecord = {
+    const source = payload.source || 'trackstar';
+    let metadata = { ...(payload.metadataJson || {}) };
+    metadata['source'] = source;
+    metadata = sanitizeAtprotoRecord(metadata);
+
+    const mediaRecord = sanitizeAtprotoRecord({
       $type: LEXICONS.MEDIA,
       id: mediaItemId,
       mediaType: payload.mediaType,
       title: payload.title.trim(),
-      metadataJson: payload.metadataJson || {},
+      metadataJson: metadata,
       createdAt: new Date().toISOString()
-    };
+    });
 
     await this.client.putRecord(did, LEXICONS.MEDIA, mediaRkey, mediaRecord, accessJwt);
 
     // 2. Create the log record
     const logRkey = generateTid();
     const now = new Date().toISOString();
-    const logRecord = {
+    const logRecord = sanitizeAtprotoRecord({
       $type: LEXICONS.LOG,
       mediaItemId,
       status: payload.status,
-      rating: payload.rating !== undefined ? payload.rating : undefined,
-      review: payload.review || undefined,
+      rating: sanitizeRating(payload.rating),
+      review: payload.review?.trim() || undefined,
       loggedAt: payload.loggedAt || now,
       completedAt: payload.completedAt || (payload.status === 'completed' ? now : undefined),
-      source: payload.source || 'trackstar'
-    };
+      source: source
+    });
 
     const res = await this.client.putRecord(did, LEXICONS.LOG, logRkey, logRecord, accessJwt);
 

@@ -152,12 +152,12 @@
               },
               {
                 "glob": "**/*",
-                "input": "apps/browser-extension/src/background",
+                "input": "apps/browser-extension/background",
                 "output": "background"
               },
               {
                 "glob": "**/*",
-                "input": "apps/browser-extension/src/content_scripts",
+                "input": "apps/browser-extension/content_scripts",
                 "output": "content_scripts"
               }
             ],

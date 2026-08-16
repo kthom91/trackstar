@@ -7,21 +7,21 @@
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx ng build browser-extension"
+        "command": "node apps/browser-extension/scripts/build-content-scripts.mjs && npx ng build browser-extension"
       },
       "configurations": {
         "production": {
-          "command": "npx ng build browser-extension --configuration production"
+          "command": "node apps/browser-extension/scripts/build-content-scripts.mjs && npx ng build browser-extension --configuration production"
         },
         "development": {
-          "command": "npx ng build browser-extension --configuration development"
+          "command": "node apps/browser-extension/scripts/build-content-scripts.mjs && npx ng build browser-extension --configuration development"
         }
       }
     },
     "watch": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx ng build browser-extension --watch --configuration development"
+        "command": "node apps/browser-extension/scripts/build-content-scripts.mjs && npx ng build browser-extension --watch --configuration development"
       }
     }
   }

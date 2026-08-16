@@ -36,4 +36,12 @@ Klara and the Sun,Kazuo Ishiguro,,9780593318171,paperback,to-read,2023-03-01,,,,
     expect(book3.title).toBe('Klara and the Sun');
     expect(book3.status).toBe('want_to_consume');
   });
+
+  it('declares browser extension match patterns and content script', () => {
+    expect(provider.exportGuideUrl).toBe('https://app.thestorygraph.com/user-export');
+    expect(provider.extension).toBeDefined();
+    expect(provider.extension?.matchPatterns).toContain('https://app.thestorygraph.com/*');
+    expect(provider.extension?.contentScriptFile).toBe('storygraph.content-script.js');
+    expect(provider.extension?.actions?.length).toBeGreaterThan(0);
+  });
 });

@@ -80,6 +80,85 @@ export class IntegrationRegistry {
 
     return await provider.parseCsv(content, options);
   }
+
+  /**
+   * Get the default canonical provider for a given media type.
+   */
+  getDefaultProviderForMediaType(mediaType?: string): IntegrationProvider | undefined {
+    if (!mediaType) return undefined;
+    const normalized = mediaType.toLowerCase();
+    switch (normalized) {
+      case 'movie':
+      case 'film':
+        return this.get('letterboxd');
+      case 'book':
+        return this.get('storygraph') || this.get('goodreads');
+      case 'concert':
+      case 'live':
+        return this.get('setlistfm');
+      case 'music':
+      case 'track':
+        return this.get('teal');
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Resolve the canonical external web URL for any media log or entry.
+   */
+  getItemExternalUrl(item: {
+    title?: string;
+    source?: string;
+    mediaType?: string;
+    metadata?: Record<string, any>;
+    externalId?: string;
+    externalUrl?: string;
+  }): string {
+    const title = item.title || '';
+    const meta = item.metadata || {};
+
+    const externalId = item.externalId || meta['isbn'] || meta['isbn13'] || meta['id'] || meta['musicBrainzId'] || meta['spotifyId'];
+    const externalUrl =
+      item.externalUrl ||
+      meta['url'] ||
+      meta['externalUrl'] ||
+      meta['letterboxd_url'] ||
+      meta['setlist_url'] ||
+      meta['storygraph_url'] ||
+      meta['goodreads_url'] ||
+      meta['teal_url'] ||
+      meta['link'];
+
+    // 1. Try matching by explicit source
+    if (item.source) {
+      const provider = this.get(item.source.toLowerCase());
+      if (provider && provider.getItemUrl) {
+        const url = provider.getItemUrl({
+          title,
+          externalId,
+          externalUrl,
+          metadata: meta
+        });
+        if (url) return url;
+      }
+    }
+
+    // 2. Try default provider by mediaType
+    const defaultProvider = this.getDefaultProviderForMediaType(item.mediaType);
+    if (defaultProvider && defaultProvider.getItemUrl) {
+      const url = defaultProvider.getItemUrl({
+        title,
+        externalId,
+        externalUrl,
+        metadata: meta
+      });
+      if (url) return url;
+    }
+
+    // 3. Last fallback: metadata direct url or hash
+    return externalUrl || '#';
+  }
 }
 
 // Convenient export functions
@@ -88,3 +167,13 @@ export const getAllProviders = () => registry.getAll();
 export const getProvider = (id: string) => registry.get(id);
 export const detectProviderForCsv = (headers: string[], filename?: string) => registry.detectProviderForCsv(headers, filename);
 export const parseCsvAuto = (content: string | File, options?: CsvParseOptions) => registry.parseCsvAuto(content, options);
+export const getDefaultProviderForMediaType = (mediaType?: string) => registry.getDefaultProviderForMediaType(mediaType);
+export const getItemExternalUrl = (item: {
+  title?: string;
+  source?: string;
+  mediaType?: string;
+  metadata?: Record<string, any>;
+  externalId?: string;
+  externalUrl?: string;
+}) => registry.getItemExternalUrl(item);
+

@@ -729,11 +729,15 @@ import { unzipSync, strFromU8 } from 'fflate';
             }
           }
 
-          // 5. Highlight Save/Submit Button
-          const submitBtn = modal.querySelector('input[type="submit"], button[type="submit"], .button-action, .save-review');
-          if (submitBtn) {
-            submitBtn.classList.add('trackstar-highlight-btn');
-          }
+          // 5. Highlight Save/Submit Button & Attach Click Listeners
+          const submitButtons = modal.querySelectorAll('input[type="submit"], button[type="submit"], .button-action, .save-review, #save-review, [data-action="save"]');
+          submitButtons.forEach(btn => {
+            btn.classList.add('trackstar-highlight-btn');
+            btn.addEventListener('click', () => {
+              console.log('[Trackstar] Save button click intercepted!');
+              markAsSynced('save_button_click');
+            }, true);
+          });
 
           showTrackstarBanner(
             `Entry pre-filled for "${payload.title}" (${payload.rating ? payload.rating + '★' : 'Watched'})! Click "Save" to log to your Letterboxd Diary.`,
@@ -741,18 +745,134 @@ import { unzipSync, strFromU8 } from 'fflate';
             0
           );
 
-          // 6. Hook form submission to mark item as synced in PDS
-          const form = modal.querySelector('form') || modal;
-          form.addEventListener('submit', () => {
-            console.log('[Trackstar] Diary entry submitted! Updating PDS log source...');
+          // 6. Multi-layer save detection (Click, Submit, Keyboard, Toast Mutation, Modal Exit)
+          let isMarked = false;
+
+          function markAsSynced(triggerReason = 'save_detected') {
+            if (isMarked) return;
+            isMarked = true;
+            console.log(`[Trackstar] Marking "${payload.title}" (rkey: ${payload.rkey}) as synced to Letterboxd [Trigger: ${triggerReason}]...`);
+
             chrome.runtime.sendMessage({
               type: 'MARK_SYNCED',
               rkey: payload.rkey,
               source: 'letterboxd'
+            }, (response) => {
+              console.log('[Trackstar] PDS MARK_SYNCED response:', response);
             });
-            showTrackstarBanner(`✓ "${payload.title}" saved to Diary and marked synced in PDS!`, 'success', 6000);
-            history.replaceState(null, document.title, window.location.pathname + window.location.search);
-          }, { once: true });
+
+            showTrackstarBanner(`✓ "${payload.title}" saved to Diary and marked synced in TrackStar!`, 'success', 6000);
+
+            try {
+              history.replaceState(null, document.title, window.location.pathname + window.location.search);
+            } catch {}
+
+            try {
+              observer.disconnect();
+              clearInterval(modalCheckInterval);
+            } catch {}
+          }
+
+          // A. Form submit event (Capture phase)
+          const form = modal.querySelector('form') || modal;
+          form.addEventListener('submit', () => {
+            console.log('[Trackstar] Form submit event intercepted!');
+            markAsSynced('form_submit');
+          }, true);
+
+          // B. Global click capture for any Save button
+          const globalClickListener = (e) => {
+            const target = e.target;
+            if (!target) return;
+            const isSaveBtn = (typeof target.matches === 'function' && target.matches('input[type="submit"], button[type="submit"], .button-action, .save-review, #save-review, [data-action="save"]')) ||
+              (typeof target.closest === 'function' && target.closest('input[type="submit"], button[type="submit"], .button-action, .save-review, #save-review, [data-action="save"]')) ||
+              (target.tagName === 'INPUT' && target.value === 'Save') ||
+              (target.tagName === 'BUTTON' && (target.textContent || '').trim().toLowerCase() === 'save');
+            if (isSaveBtn) {
+              console.log('[Trackstar] Global Save button click intercepted!');
+              markAsSynced('global_save_click');
+            }
+          };
+          document.addEventListener('click', globalClickListener, true);
+
+          // C. Keyboard shortcut (Cmd+Enter / Ctrl+Enter)
+          modal.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              console.log('[Trackstar] Cmd/Ctrl+Enter shortcut intercepted!');
+              markAsSynced('keyboard_shortcut');
+            }
+          }, true);
+
+          // D. MutationObserver for Letterboxd Success Feedback & Toast Text
+          const observer = new MutationObserver((mutations) => {
+            if (isMarked) return;
+
+            // 1. Scan added nodes and text content directly from DOM mutations
+            for (const mutation of mutations) {
+              for (const node of mutation.addedNodes) {
+                if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
+                  const content = (node.textContent || '').toLowerCase();
+                  if (
+                    content.includes('was added to your films') ||
+                    content.includes('added to your films') ||
+                    content.includes('added to your diary') ||
+                    content.includes('review saved') ||
+                    content.includes('diary entry added')
+                  ) {
+                    console.log('[Trackstar] Success text mutation detected:', content);
+                    markAsSynced('toast_mutation_detected');
+                    return;
+                  }
+                }
+              }
+            }
+
+            // 2. Check for toast/message banners in DOM
+            const messageNodes = document.querySelectorAll(
+              '#message-drawer, .message-banner, .toast, .notification, .alert, .banner-message, #toast, .notification-body, [class*="message"], [class*="toast"], [class*="notification"], .messages, .message-item'
+            );
+            for (const node of messageNodes) {
+              const text = (node.textContent || '').toLowerCase();
+              if (
+                text.includes('was added to your films') ||
+                text.includes('added to your films') ||
+                text.includes('saved') ||
+                text.includes('diary') ||
+                text.includes('reviewed') ||
+                text.includes('added to') ||
+                text.includes('you watched')
+              ) {
+                console.log('[Trackstar] Success toast message detected in element:', text);
+                markAsSynced('toast_detected');
+                return;
+              }
+            }
+
+            // Check if page state updated with review/diary entry
+            const hasReviewed = document.querySelector('.has-reviewed, .film-viewings, .viewing-poster, .edit-review-button, .your-review');
+            const modalEl = document.querySelector('#modal, .film-review-modal, #film-diary-entry');
+            const isModalHidden = !modalEl || modalEl.offsetParent === null || window.getComputedStyle(modalEl).display === 'none';
+            if (hasReviewed && isModalHidden) {
+              console.log('[Trackstar] Film review indicator detected on page after modal closed');
+              markAsSynced('page_review_indicator');
+            }
+          });
+          observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+          // E. Fallback interval check for modal removal
+          const modalCheckInterval = setInterval(() => {
+            if (isMarked) {
+              clearInterval(modalCheckInterval);
+              return;
+            }
+            const modalEl = document.querySelector('#modal, .film-review-modal, #film-diary-entry');
+            const isHidden = !modalEl || modalEl.offsetParent === null || window.getComputedStyle(modalEl).display === 'none';
+            const hasReviewed = document.querySelector('.has-reviewed, .film-viewings, .viewing-poster, .edit-review-button, .your-review');
+            if (isHidden && hasReviewed) {
+              clearInterval(modalCheckInterval);
+              markAsSynced('modal_closed_and_reviewed');
+            }
+          }, 500);
 
         });
       }, 600);

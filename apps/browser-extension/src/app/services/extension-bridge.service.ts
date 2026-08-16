@@ -22,7 +22,7 @@ export class ExtensionBridgeService {
   // Reactive signals
   readonly config = signal<PdsConfig>({
     pdsUrl: 'http://localhost:3000',
-    handle: 'kentrain.trackstar.test',
+    handle: 'user123.trackstar.test',
     password: 'password123'
   });
 
@@ -98,8 +98,12 @@ export class ExtensionBridgeService {
     try {
       const res = await this.sendMessage<{ success: boolean; data: PdsConfig }>({ type: 'GET_CONFIG' });
       if (res?.data) {
-        this.config.set(res.data);
-        return Boolean(res.data.did && res.data.accessJwt);
+        const cfg = { ...res.data };
+        if (cfg.handle === 'kentrain.trackstar.test' || !cfg.handle) {
+          cfg.handle = 'user123.trackstar.test';
+        }
+        this.config.set(cfg);
+        return Boolean(cfg.did && cfg.accessJwt);
       }
     } catch (e) {
       console.warn('Failed to load PDS config:', e);
@@ -176,8 +180,22 @@ export class ExtensionBridgeService {
         throw new Error(fetchRes.error || 'Failed to fetch Letterboxd RSS feed.');
       }
 
-      const parsed = this.parseLetterboxdRss(fetchRes.data);
-      if (parsed.length === 0) {
+      const provider = getProvider('letterboxd');
+      if (!provider?.parseRss) {
+        throw new Error('Letterboxd RSS parser not available in integration registry.');
+      }
+
+      const parsedResult = await provider.parseRss(fetchRes.data);
+      const parsedItems: LetterboxdRssItem[] = parsedResult.entries.map(entry => ({
+        link: entry.externalUrl || entry.metadata['letterboxd_url'] || entry.metadata['link'] || '',
+        title: entry.title,
+        year: entry.metadata['year'] ? String(entry.metadata['year']) : undefined,
+        rating: entry.rating || null,
+        watchedDate: entry.completedAt || entry.loggedAt,
+        coverUrl: entry.metadata['coverUrl']
+      })).filter(i => Boolean(i.link && i.title));
+
+      if (parsedItems.length === 0) {
         this.rssState.set({
           polling: false,
           newCount: 0,
@@ -189,7 +207,7 @@ export class ExtensionBridgeService {
 
       const ingestRes = await this.sendMessage<{ success: boolean; data?: { newCount: number; totalCount: number }; error?: string }>({
         type: 'LETTERBOXD_RSS_INGEST',
-        items: parsed
+        items: parsedItems
       });
 
       if (!ingestRes.success || !ingestRes.data) {
@@ -221,45 +239,24 @@ export class ExtensionBridgeService {
     }
   }
 
-  private parseLetterboxdRss(xmlText: string): LetterboxdRssItem[] {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xmlText, 'application/xml');
-    const items = Array.from(doc.querySelectorAll('channel > item'));
-    const NS = 'https://boxd.it/';
+  async syncMovieToLetterboxd(item: ExtensionMediaItem): Promise<void> {
+    const url = this.getLetterboxdReviewUrl(item);
+    await this.openTab(url);
+  }
 
-    return items.map(item => {
-      const getText = (tag: string, ns?: string) => {
-        const el = ns ? item.getElementsByTagNameNS(ns, tag)[0] : item.querySelector(tag);
-        return el ? (el.textContent || '').trim() : '';
-      };
+  async syncBookToStoryGraph(item: ExtensionMediaItem): Promise<void> {
+    const url = `https://app.thestorygraph.com/browse?search_term=${encodeURIComponent(item.title)}`;
+    await this.openTab(url);
+  }
 
-      const link = getText('link');
-      const filmTitle = getText('filmTitle', NS) || getText('title');
-      const filmYear = getText('filmYear', NS);
-      const ratingRaw = getText('memberRating', NS);
-      let watchedDate = getText('watchedDate', NS) || getText('pubDate');
-
-      if (watchedDate && /^\d{4}-\d{2}-\d{2}$/.test(watchedDate)) {
-        watchedDate = `${watchedDate}T00:00:00Z`;
-      }
-
-      let rating: number | null = null;
-      if (ratingRaw) {
-        const val = Math.round(parseFloat(ratingRaw));
-        rating = val > 0 ? Math.max(1, Math.min(5, val)) : null;
-      }
-
-      const description = getText('description');
-      let coverUrl: string | undefined = undefined;
-      if (description) {
-        const match = description.match(/src=["']([^"']+)["']/i);
-        if (match) {
-          coverUrl = match[1];
-        }
-      }
-
-      return { link, title: filmTitle, year: filmYear, rating, watchedDate, coverUrl };
-    }).filter(i => i.link && i.title);
+  async markItemSynced(item: ExtensionMediaItem): Promise<void> {
+    const source = item.mediaType === 'book' ? 'storygraph' : (item.mediaType === 'concert' ? 'setlist.fm' : 'letterboxd');
+    await this.sendMessage({
+      type: 'MARK_SYNCED',
+      rkey: item.rkey,
+      source
+    });
+    await this.fetchAllMedia();
   }
 
   getLetterboxdReviewUrl(item: ExtensionMediaItem): string {

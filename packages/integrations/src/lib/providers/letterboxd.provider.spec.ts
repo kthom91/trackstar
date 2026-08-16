@@ -71,4 +71,11 @@ describe('LetterboxdProvider', () => {
       expect(result.entries[0].metadata.coverUrl).toBe('https://a.ltrbxd.com/resized/film-poster/1/2/3/poster.jpg');
     }
   });
+
+  it('declares browser extension match patterns and content script', () => {
+    expect(provider.extension).toBeDefined();
+    expect(provider.extension?.matchPatterns).toContain('https://letterboxd.com/*');
+    expect(provider.extension?.contentScriptFile).toBe('letterboxd.content-script.js');
+    expect(provider.extension?.actions?.length).toBeGreaterThan(0);
+  });
 });

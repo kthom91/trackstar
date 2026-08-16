@@ -14,177 +14,181 @@ import { getProvider, getAllProviders, IntegrationProvider } from '@trackstar/in
       
       <!-- Top Header -->
       <header class="flex items-center justify-between px-3.5 py-2.5 bg-[#faf7f2] border-b border-[rgba(14,14,14,0.14)] shrink-0 shadow-xs">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-7 h-7 rounded-lg bg-[#0e0e0e] text-[#f0ede6] flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+        <div class="flex items-center space-x-3 select-none">
+          <div class="w-8 h-8 rounded-xl bg-[#0e0e0e] flex items-center justify-center text-[#f0ede6] font-bold text-sm shadow-sm shrink-0">
             <span>t*</span>
           </div>
-          <div>
-            <h1 class="text-xs font-serif font-bold text-[#0e0e0e] leading-none">TrackStar</h1>
-            <p class="text-[9px] text-[#9a8f7e] font-mono tracking-widest uppercase leading-tight mt-0.5">PDS Media Sync</p>
+          <div class="flex flex-col">
+            <span class="font-serif font-bold text-xl tracking-tight text-[#0e0e0e] leading-none">TrackStar</span>
+            <span class="text-[9px] text-[#9a8f7e] font-mono tracking-[0.22em] uppercase mt-0.5">MEDIA TRACKER</span>
           </div>
         </div>
 
         <div class="flex items-center space-x-1.5">
-          <!-- Connection Pill -->
-          <span class="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono transition-colors border border-[rgba(14,14,14,0.24)] bg-[#faf7f2] text-[#0e0e0e]">
-            <span class="w-1.5 h-1.5 rounded-full shrink-0"
-                  [ngClass]="bridge.isConnected() ? 'bg-[#5a8a5a]' : 'bg-[#9a8f7e]'"></span>
-            <span class="truncate max-w-[90px]">
-              {{ bridge.isConnected() ? (bridge.config().handle ? bridge.config().handle : 'Connected') : 'Offline' }}
-            </span>
-          </span>
-
           <!-- Refresh Button -->
-          <button (click)="refresh()" 
-                  title="Refresh PDS records"
-                  class="p-1.5 text-[#3d3830] hover:text-[#0e0e0e] rounded-lg hover:bg-[rgba(14,14,14,0.06)] border border-transparent hover:border-[rgba(14,14,14,0.14)] transition-all">
-            <svg class="w-3.5 h-3.5" [ngClass]="{'animate-spin': bridge.loading()}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          <button (click)="refresh()" [disabled]="bridge.loading()"
+                  title="Refresh records from PDS"
+                  class="p-1.5 rounded-lg text-[#3d3830] hover:text-[#0e0e0e] hover:bg-[rgba(14,14,14,0.06)] transition-colors">
+            <svg class="w-3.5 h-3.5" [class.animate-spin]="bridge.loading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
           </button>
 
-          <!-- Settings Toggle Button -->
-          <button (click)="toggleSettings()" 
-                  title="Configure PDS Settings"
-                  class="p-1.5 text-[#3d3830] hover:text-[#0e0e0e] rounded-lg hover:bg-[rgba(14,14,14,0.06)] border border-transparent hover:border-[rgba(14,14,14,0.14)] transition-all"
-                  [ngClass]="{'bg-[rgba(14,14,14,0.08)] border-[rgba(14,14,14,0.24)] text-[#0e0e0e]': isSettingsOpen()}">
+          <!-- Settings Toggle -->
+          <button (click)="toggleSettings()"
+                  [class]="isSettingsOpen() ? 'bg-[#0e0e0e] text-[#f0ede6]' : 'text-[#3d3830] hover:text-[#0e0e0e] hover:bg-[rgba(14,14,14,0.06)]'"
+                  title="PDS Connection Settings"
+                  class="p-1.5 rounded-lg transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
           </button>
         </div>
       </header>
 
-      <!-- Settings Panel (Collapsible) -->
-      <section *ngIf="isSettingsOpen()" class="p-3.5 bg-[#faf7f2] border-b border-[rgba(14,14,14,0.24)] space-y-3 shrink-0 shadow-inner">
-        <h2 class="text-xs font-serif font-bold text-[#0e0e0e] tracking-tight">PDS Server Configuration</h2>
+      <!-- Main Body Container -->
+      <main class="flex-1 overflow-y-auto p-3 space-y-3">
         
-        <form (ngSubmit)="saveSettings()" class="space-y-2.5">
-          <div>
-            <label class="block text-[10px] font-mono font-bold uppercase text-[#3d3830] mb-1 tracking-wider">PDS Endpoint URL</label>
-            <input type="url" [(ngModel)]="pdsUrl" name="pdsUrl" required placeholder="http://localhost:3000"
-                   class="w-full px-2.5 py-1.5 bg-white border border-[rgba(14,14,14,0.24)] rounded-lg text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e] font-mono shadow-xs transition-colors">
+        <!-- PDS Settings Modal / Dropdown Panel -->
+        <div *ngIf="isSettingsOpen()" class="p-3 bg-[#faf7f2] border border-[rgba(14,14,14,0.24)] rounded-xl space-y-3 shadow-sm animate-fadeIn">
+          <div class="flex items-center justify-between pb-1.5 border-b border-[rgba(14,14,14,0.14)]">
+            <span class="font-serif font-bold text-xs text-[#0e0e0e]">PDS Credentials</span>
+            <span class="text-[9px] font-mono text-[#9a8f7e] uppercase">AT Protocol</span>
           </div>
 
-          <div>
-            <label class="block text-[10px] font-mono font-bold uppercase text-[#3d3830] mb-1 tracking-wider">Handle / DID</label>
-            <input type="text" [(ngModel)]="handle" name="handle" required placeholder="kentrain.trackstar.test"
-                   class="w-full px-2.5 py-1.5 bg-white border border-[rgba(14,14,14,0.24)] rounded-lg text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e] font-mono shadow-xs transition-colors">
+          <div class="space-y-2">
+            <div>
+              <label class="block text-[10px] text-[#3d3830] font-bold mb-0.5">PDS URL</label>
+              <input type="text" [(ngModel)]="pdsUrl" placeholder="http://localhost:3000"
+                     class="w-full px-2.5 py-1 bg-white border border-[rgba(14,14,14,0.24)] rounded-md text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+            </div>
+
+            <div>
+              <label class="block text-[10px] text-[#3d3830] font-bold mb-0.5">Handle</label>
+              <input type="text" [(ngModel)]="handle" placeholder="user.bsky.social"
+                     class="w-full px-2.5 py-1 bg-white border border-[rgba(14,14,14,0.24)] rounded-md text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+            </div>
+
+            <div>
+              <label class="block text-[10px] text-[#3d3830] font-bold mb-0.5">App Password</label>
+              <input type="password" [(ngModel)]="password" placeholder="••••••••"
+                     class="w-full px-2.5 py-1 bg-white border border-[rgba(14,14,14,0.24)] rounded-md text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+            </div>
           </div>
 
-          <div>
-            <label class="block text-[10px] font-mono font-bold uppercase text-[#3d3830] mb-1 tracking-wider">App Password / Password</label>
-            <input type="password" [(ngModel)]="password" name="password" required placeholder="••••••••••••"
-                   class="w-full px-2.5 py-1.5 bg-white border border-[rgba(14,14,14,0.24)] rounded-lg text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e] font-mono shadow-xs transition-colors">
-          </div>
-
-          <div class="flex items-center space-x-2">
-            <button type="button" (click)="setPresetLocal()" class="px-2.5 py-1 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.24)] rounded-md text-[10px] font-mono text-[#3d3830] hover:text-[#0e0e0e] transition-colors">
-              Local (:3000)
+          <!-- Presets -->
+          <div class="flex space-x-1.5 pt-1">
+            <button (click)="setPresetLocal()" class="px-2 py-0.5 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.18)] rounded text-[10px] text-[#3d3830] transition-colors">
+              Local PDS (3000)
             </button>
-            <button type="button" (click)="setPresetBsky()" class="px-2.5 py-1 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.24)] rounded-md text-[10px] font-mono text-[#3d3830] hover:text-[#0e0e0e] transition-colors">
-              Bluesky
+            <button (click)="setPresetBsky()" class="px-2 py-0.5 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.18)] rounded text-[10px] text-[#3d3830] transition-colors">
+              Bluesky Social
             </button>
           </div>
 
-          <button type="submit" [disabled]="bridge.loading()" 
-                  class="w-full py-1.5 px-3 bg-[#0e0e0e] hover:bg-neutral-800 disabled:opacity-50 text-[#f0ede6] font-mono font-medium rounded-lg text-xs shadow-sm transition-all">
-            {{ bridge.loading() ? 'Connecting...' : 'Connect to PDS' }}
+          <!-- Save Button -->
+          <button (click)="saveSettings()" [disabled]="bridge.loading()"
+                  class="w-full py-1.5 bg-[#0e0e0e] hover:bg-neutral-800 disabled:opacity-50 text-[#f0ede6] font-mono font-medium rounded-lg text-xs transition-colors shadow-xs">
+            {{ bridge.loading() ? 'Connecting…' : 'Save & Connect' }}
           </button>
+        </div>
 
-          <div *ngIf="bridge.error()" class="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-mono">
-            {{ bridge.error() }}
+        <!-- Connection Status Pill -->
+        <div class="flex items-center justify-between px-3 py-1.5 bg-[#faf7f2] border border-[rgba(14,14,14,0.14)] rounded-lg text-[11px]">
+          <div class="flex items-center space-x-2 min-w-0">
+            <span class="w-2 h-2 rounded-full shrink-0"
+                  [ngClass]="bridge.isConnected() ? 'bg-emerald-600 ring-2 ring-emerald-300' : 'bg-amber-600'"></span>
+            <span class="truncate font-medium text-[#0e0e0e]">
+              {{ bridge.isConnected() ? (bridge.config().handle || 'Connected') : 'Not Connected' }}
+            </span>
           </div>
-        </form>
-      </section>
-
-      <!-- Navigation Tabs -->
-      <nav class="flex border-b border-[rgba(14,14,14,0.14)] bg-[#faf7f2] shrink-0">
-        <button (click)="activeTab.set('integrations')"
-                [ngClass]="activeTab() === 'integrations' ? 'border-b-2 border-[#0e0e0e] text-[#0e0e0e] font-bold bg-[#f0ede6]/50' : 'text-[#3d3830] hover:text-[#0e0e0e]'"
-                class="flex-1 py-2 text-center text-xs font-mono transition-colors">
-          Integrations
-        </button>
-        <button (click)="activeTab.set('unsynced')"
-                [ngClass]="activeTab() === 'unsynced' ? 'border-b-2 border-[#0e0e0e] text-[#0e0e0e] font-bold bg-[#f0ede6]/50' : 'text-[#3d3830] hover:text-[#0e0e0e]'"
-                class="flex-1 py-2 text-center text-xs font-mono transition-colors flex items-center justify-center space-x-1.5">
-          <span>Unsynced Items</span>
-          <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono transition-colors"
-                [ngClass]="bridge.unsyncedCount() > 0 ? 'bg-[#0e0e0e] text-[#f0ede6]' : 'bg-[rgba(14,14,14,0.08)] text-[#9a8f7e]'">
-            {{ bridge.unsyncedCount() }}
+          <span class="text-[10px] font-mono text-[#9a8f7e] shrink-0">
+            {{ bridge.mediaItems().length }} records
           </span>
-        </button>
-      </nav>
-
-      <!-- Main Content Area (Scrollable) -->
-      <main class="flex-1 overflow-y-auto p-3 space-y-3 bg-[#f0ede6]">
-        
-        <!-- Loading State -->
-        <div *ngIf="bridge.loading() && bridge.mediaItems().length === 0" class="flex flex-col items-center justify-center py-12 space-y-2">
-          <div class="w-5 h-5 border-2 border-[rgba(14,14,14,0.18)] border-t-[#0e0e0e] rounded-full animate-spin"></div>
-          <p class="text-[11px] font-mono text-[#9a8f7e]">Fetching records from PDS...</p>
         </div>
 
-        <!-- Disconnected Warning Banner -->
-        <div *ngIf="!bridge.isConnected() && !isSettingsOpen()" class="p-3.5 bg-[#faf7f2] border border-[rgba(14,14,14,0.24)] rounded-xl text-center space-y-2 shadow-xs">
-          <p class="font-serif font-bold text-[#0e0e0e] text-xs">PDS Connection Needed</p>
-          <p class="text-[11px] font-mono text-[#3d3830]">Connect your PDS credentials to view integrations and sync records.</p>
-          <button (click)="isSettingsOpen.set(true)" class="px-3 py-1.5 bg-[#0e0e0e] hover:bg-neutral-800 text-[#f0ede6] font-mono font-medium rounded-lg text-xs transition-all shadow-xs">
-            Open Settings
+        <!-- Navigation Tabs (Integrations vs Unsynced Items) -->
+        <div class="flex border-b border-[rgba(14,14,14,0.18)]">
+          <button (click)="activeTab.set('integrations')"
+                  [class]="activeTab() === 'integrations' ? 'border-[#0e0e0e] text-[#0e0e0e] font-bold' : 'border-transparent text-[#9a8f7e] hover:text-[#0e0e0e]'"
+                  class="flex-1 py-1.5 text-center border-b-2 text-xs font-mono transition-all">
+            Providers ({{ activeProviders.length }})
+          </button>
+          <button (click)="activeTab.set('unsynced')"
+                  [class]="activeTab() === 'unsynced' ? 'border-[#0e0e0e] text-[#0e0e0e] font-bold' : 'border-transparent text-[#9a8f7e] hover:text-[#0e0e0e]'"
+                  class="flex-1 py-1.5 text-center border-b-2 text-xs font-mono transition-all flex items-center justify-center space-x-1">
+            <span>Unsynced</span>
+            <span *ngIf="bridge.unsyncedItems().length > 0" 
+                  class="px-1.5 py-0.2 rounded-full bg-[#0e0e0e] text-[#f0ede6] text-[9px] font-bold">
+              {{ bridge.unsyncedItems().length }}
+            </span>
           </button>
         </div>
 
-        <!-- TAB 1: INTEGRATIONS -->
+        <!-- TAB 1: DYNAMIC INTEGRATIONS LIST -->
         <div *ngIf="activeTab() === 'integrations'" class="space-y-3">
           
-          <!-- Letterboxd Card -->
-          <div class="p-3 bg-[#faf7f2] border border-[rgba(14,14,14,0.24)] rounded-xl space-y-2.5 shadow-xs">
+          <div *ngFor="let provider of activeProviders" 
+               class="p-3 bg-[#faf7f2] border border-[rgba(14,14,14,0.24)] rounded-xl space-y-2.5 shadow-xs">
+            
+            <!-- Card Header -->
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2.5 min-w-0">
                 <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center overflow-hidden shrink-0 border border-[rgba(14,14,14,0.14)]">
-                  <img src="icons/services/letterboxd_favicon.png" alt="Letterboxd" class="w-5 h-5 object-contain" (error)="onImgError($event)">
+                  <span class="font-serif font-black text-xs text-[#0e0e0e]">{{ provider.avatarText }}</span>
                 </div>
                 <div class="min-w-0">
-                  <div class="font-serif font-bold text-[#0e0e0e] text-xs">Letterboxd</div>
-                  <div class="text-[10px] font-mono text-[#9a8f7e]">Movies & Diary</div>
+                  <div class="font-serif font-bold text-[#0e0e0e] text-xs">{{ provider.name }}</div>
+                  <div class="text-[10px] font-mono text-[#9a8f7e] capitalize">{{ provider.mediaType }}s & Logs</div>
                 </div>
               </div>
 
               <!-- Top Right Status Indicators -->
               <div class="flex items-center space-x-1.5 shrink-0 text-[10px] font-mono">
                 <span class="px-2 py-0.5 rounded-full bg-[rgba(90,138,90,0.12)] text-[#3a6b3a] border border-[rgba(90,138,90,0.3)] font-medium"
-                      title="Synced with Letterboxd">
-                  {{ getSyncedCount('movie') }} synced
+                      [title]="'Synced with ' + provider.name">
+                  {{ getProviderSyncedCount(provider) }} synced
                 </span>
-                <span *ngIf="getUnsyncedCount('movie') > 0"
+                <span *ngIf="getProviderUnsyncedCount(provider) > 0"
                       class="px-2 py-0.5 rounded-full bg-[rgba(14,14,14,0.06)] text-[#3d3830] border border-[rgba(14,14,14,0.18)] font-medium"
-                      title="Unsynced movies">
-                  {{ getUnsyncedCount('movie') }} unsynced
+                      [title]="'Unsynced ' + provider.mediaType + 's'">
+                  {{ getProviderUnsyncedCount(provider) }} unsynced
                 </span>
               </div>
             </div>
 
+            <!-- Action Buttons Grid -->
             <div class="grid grid-cols-2 gap-2">
-              <button (click)="bridge.openTab('https://letterboxd.com/settings/data/')"
-                      title="Open Letterboxd Account Data export page"
+              <button *ngIf="provider.exportGuideUrl" 
+                      (click)="bridge.openTab(provider.exportGuideUrl)"
+                      [title]="'Open ' + provider.name + ' Export Page'"
                       class="py-1.5 px-2 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.24)] rounded-lg text-center font-mono font-medium text-[#0e0e0e] transition-colors text-[11px]">
-                Export Letterboxd
+                Export {{ provider.name }}
               </button>
-              <button (click)="openLetterboxdWatchlist()"
+
+              <button *ngIf="provider.id === 'letterboxd'" 
+                      (click)="openLetterboxdWatchlist()"
                       title="Open Letterboxd Watchlist"
                       class="py-1.5 px-2 bg-[#0e0e0e] hover:bg-neutral-800 text-[#f0ede6] rounded-lg text-center font-mono font-medium transition-colors text-[11px] shadow-xs">
                 Sync Watchlist ({{ movieWatchlistCount() }})
               </button>
+
+              <button *ngIf="provider.id === 'storygraph'" 
+                      (click)="bridge.openTab('https://app.thestorygraph.com/import-goodreads')"
+                      class="py-1.5 px-2 bg-[#0e0e0e] hover:bg-neutral-800 text-[#f0ede6] rounded-lg text-center font-mono font-medium transition-colors text-[11px] shadow-xs">
+                Sync StoryGraph
+              </button>
+
+              <button *ngIf="provider.id === 'letterboxd'" 
+                      (click)="activeTab.set('unsynced')"
+                      class="col-span-2 py-1.5 px-2 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.24)] rounded-lg text-center font-mono font-medium text-[#0e0e0e] transition-colors text-[11px]">
+                Sync Diary ({{ unsyncedMovieCount() }})
+              </button>
             </div>
 
-            <button (click)="activeTab.set('unsynced')"
-                    class="w-full py-1.5 px-2 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.24)] rounded-lg text-center font-mono font-medium text-[#0e0e0e] transition-colors text-[11px]">
-              Sync Diary ({{ unsyncedMovieCount() }})
-            </button>
-
-            <!-- Letterboxd RSS Section -->
-            <div class="pt-2 border-t border-[rgba(14,14,14,0.14)] space-y-1.5">
+            <!-- Provider Capability: Letterboxd RSS Feed Polling -->
+            <div *ngIf="provider.capabilities.includes('rss_sync')" class="pt-2 border-t border-[rgba(14,14,14,0.14)] space-y-1.5">
               <div class="flex items-center space-x-1.5 text-[10px] text-[#3d3830] font-mono font-medium">
                 <svg class="w-3 h-3 text-[#0e0e0e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7M6 17a1 1 0 110 2 1 1 0 010-2z"/>
@@ -213,82 +217,15 @@ import { getProvider, getAllProviders, IntegrationProvider } from '@trackstar/in
                 ✓ Synced {{ bridge.rssState().newCount }} new entries ({{ bridge.rssState().totalCount }} in feed)
               </div>
             </div>
-          </div>
 
-          <!-- StoryGraph Card -->
-          <div class="p-3 bg-[#faf7f2] border border-[rgba(14,14,14,0.24)] rounded-xl space-y-2.5 shadow-xs">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2.5 min-w-0">
-                <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center overflow-hidden shrink-0 border border-[rgba(14,14,14,0.14)]">
-                  <img src="icons/services/storygraph.png" alt="StoryGraph" class="w-5 h-5 object-contain" (error)="onImgError($event)">
-                </div>
-                <div class="min-w-0">
-                  <div class="font-serif font-bold text-[#0e0e0e] text-xs">StoryGraph</div>
-                  <div class="text-[10px] font-mono text-[#9a8f7e]">Books & Reading</div>
-                </div>
-              </div>
-
-              <!-- Top Right Status Indicators -->
-              <div class="flex items-center space-x-1.5 shrink-0 text-[10px] font-mono">
-                <span class="px-2 py-0.5 rounded-full bg-[rgba(90,138,90,0.12)] text-[#3a6b3a] border border-[rgba(90,138,90,0.3)] font-medium"
-                      title="Synced with StoryGraph">
-                  {{ getSyncedCount('book') }} synced
-                </span>
-                <span *ngIf="getUnsyncedCount('book') > 0"
-                      class="px-2 py-0.5 rounded-full bg-[rgba(14,14,14,0.06)] text-[#3d3830] border border-[rgba(14,14,14,0.18)] font-medium"
-                      title="Unsynced books">
-                  {{ getUnsyncedCount('book') }} unsynced
-                </span>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-              <button (click)="bridge.openTab('https://app.thestorygraph.com/user-export')"
-                      class="py-1.5 px-2 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.24)] rounded-lg text-center font-mono font-medium text-[#0e0e0e] transition-colors text-[11px]">
-                Export StoryGraph
-              </button>
-              <button (click)="bridge.openTab('https://app.thestorygraph.com/import-goodreads')"
-                      class="py-1.5 px-2 bg-[#0e0e0e] hover:bg-neutral-800 text-[#f0ede6] rounded-lg text-center font-mono font-medium transition-colors text-[11px] shadow-xs">
-                Sync StoryGraph
-              </button>
-            </div>
-          </div>
-
-          <!-- setlist.fm Card -->
-          <div class="p-3 bg-[#faf7f2] border border-[rgba(14,14,14,0.24)] rounded-xl space-y-2.5 shadow-xs">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2.5 min-w-0">
-                <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center overflow-hidden shrink-0 border border-[rgba(14,14,14,0.14)]">
-                  <img src="icons/services/setlistfm.png" alt="setlist.fm" class="w-5 h-5 object-contain" (error)="onImgError($event)">
-                </div>
-                <div class="min-w-0">
-                  <div class="font-serif font-bold text-[#0e0e0e] text-xs">setlist.fm</div>
-                  <div class="text-[10px] font-mono text-[#9a8f7e]">Concerts & Live Shows</div>
-                </div>
-              </div>
-
-              <!-- Top Right Status Indicators -->
-              <div class="flex items-center space-x-1.5 shrink-0 text-[10px] font-mono">
-                <span class="px-2 py-0.5 rounded-full bg-[rgba(90,138,90,0.12)] text-[#3a6b3a] border border-[rgba(90,138,90,0.3)] font-medium"
-                      title="Synced with setlist.fm">
-                  {{ getSyncedCount('concert') }} synced
-                </span>
-                <span *ngIf="getUnsyncedCount('concert') > 0"
-                      class="px-2 py-0.5 rounded-full bg-[rgba(14,14,14,0.06)] text-[#3d3830] border border-[rgba(14,14,14,0.18)] font-medium"
-                      title="Unsynced concerts">
-                  {{ getUnsyncedCount('concert') }} unsynced
-                </span>
-              </div>
-            </div>
-
-            <!-- Setlist Credentials Inputs & Sync Action -->
-            <div class="space-y-2 pt-1 border-t border-[rgba(14,14,14,0.14)]">
+            <!-- Provider Capability: API Key Sync (Setlist.fm) -->
+            <div *ngIf="provider.id === 'setlistfm'" class="space-y-2 pt-1 border-t border-[rgba(14,14,14,0.14)]">
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="block text-[9px] font-mono font-bold text-[#3d3830] mb-0.5 uppercase tracking-wider">Username</label>
                   <input type="text"
                          [(ngModel)]="setlistInputUsername"
-                         placeholder="e.g. kentrain"
+                         placeholder="e.g. user123"
                          class="w-full px-2 py-1 bg-white border border-[rgba(14,14,14,0.24)] rounded-md text-[11px] text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e] font-mono">
                 </div>
                 <div>
@@ -325,6 +262,7 @@ import { getProvider, getAllProviders, IntegrationProvider } from '@trackstar/in
                 </div>
               </div>
             </div>
+
           </div>
 
         </div>
@@ -371,28 +309,27 @@ import { getProvider, getAllProviders, IntegrationProvider } from '@trackstar/in
               </div>
             </div>
 
-            <!-- Action Button -->
-            <div class="shrink-0 flex items-center space-x-1.5 font-mono">
-              <a *ngIf="item.mediaType === 'movie'"
-                 [href]="bridge.getLetterboxdReviewUrl(item)" target="_blank"
-                 class="px-2.5 py-1 bg-[#f0ede6] hover:bg-[#0e0e0e] hover:text-[#f0ede6] text-[#0e0e0e] border border-[rgba(14,14,14,0.24)] rounded text-[10px] font-medium inline-flex items-center space-x-0.5 cursor-pointer transition-all shadow-xs">
-                <span>Letterboxd</span>
-                <span>↗</span>
-              </a>
+            <!-- Action Buttons -->
+            <div class="flex flex-col space-y-1 shrink-0">
+              <!-- Sync Action -->
+              <button *ngIf="item.mediaType === 'movie'"
+                      (click)="bridge.syncMovieToLetterboxd(item)"
+                      class="px-2.5 py-1 bg-[#0e0e0e] hover:bg-neutral-800 text-[#f0ede6] rounded-md text-[10px] font-mono font-medium transition-colors whitespace-nowrap shadow-xs">
+                Sync to LB ↗
+              </button>
 
-              <a *ngIf="item.mediaType === 'concert'"
-                 [href]="bridge.getSetlistConcertUrl(item)" target="_blank"
-                 class="px-2.5 py-1 bg-[#f0ede6] hover:bg-[#0e0e0e] hover:text-[#f0ede6] text-[#0e0e0e] border border-[rgba(14,14,14,0.24)] rounded text-[10px] font-medium inline-flex items-center space-x-0.5 cursor-pointer transition-all shadow-xs">
-                <span>setlist.fm</span>
-                <span>↗</span>
-              </a>
+              <button *ngIf="item.mediaType === 'book'"
+                      (click)="bridge.syncBookToStoryGraph(item)"
+                      class="px-2.5 py-1 bg-[#0e0e0e] hover:bg-neutral-800 text-[#f0ede6] rounded-md text-[10px] font-mono font-medium transition-colors whitespace-nowrap shadow-xs">
+                Search SG ↗
+              </button>
 
-              <a *ngIf="item.mediaType === 'book'"
-                 (click)="bridge.openTab('https://app.thestorygraph.com/import-goodreads')"
-                 class="px-2.5 py-1 bg-[#f0ede6] hover:bg-[#0e0e0e] hover:text-[#f0ede6] text-[#0e0e0e] border border-[rgba(14,14,14,0.24)] rounded text-[10px] font-medium inline-flex items-center space-x-0.5 cursor-pointer transition-all shadow-xs">
-                <span>StoryGraph</span>
-                <span>↗</span>
-              </a>
+              <!-- Mark Synced Override Button -->
+              <button (click)="bridge.markItemSynced(item)"
+                      title="Mark as already synced"
+                      class="px-2 py-0.5 bg-[#f0ede6] hover:bg-[rgba(14,14,14,0.08)] border border-[rgba(14,14,14,0.18)] rounded text-[9px] text-[#3d3830] font-mono transition-colors whitespace-nowrap">
+                Mark Synced
+              </button>
             </div>
 
           </div>
@@ -411,11 +348,15 @@ export class AppComponent {
   isSettingsOpen = signal<boolean>(false);
 
   pdsUrl = 'http://localhost:3000';
-  handle = 'kentrain.trackstar.test';
+  handle = 'user123.trackstar.test';
   password = 'password123';
   rssInputUsername = '';
   setlistInputUsername = '';
   setlistInputApiKey = '';
+
+  get activeProviders(): IntegrationProvider[] {
+    return getAllProviders();
+  }
 
   constructor() {
     const config = this.bridge.config();
@@ -437,7 +378,7 @@ export class AppComponent {
 
   setPresetLocal() {
     this.pdsUrl = 'http://localhost:3000';
-    this.handle = 'kentrain.trackstar.test';
+    this.handle = 'user123.trackstar.test';
     this.password = 'password123';
   }
 
@@ -463,10 +404,10 @@ export class AppComponent {
   }
 
   openLetterboxdWatchlist() {
-    let user = 'kentrain';
+    let user = 'user123';
     const config = this.bridge.config();
     if (config?.handle) {
-      user = config.handle.split('.')[0] || 'kentrain';
+      user = config.handle.split('.')[0] || 'user123';
     }
     this.bridge.openTab(`https://letterboxd.com/${user}/watchlist/`);
   }
@@ -479,12 +420,18 @@ export class AppComponent {
     return this.bridge.mediaItems().filter(m => m.mediaType === 'movie' && m.status === 'completed' && !m.isSynced).length;
   }
 
-  getSyncedCount(type: string): number {
-    return this.bridge.mediaItems().filter(m => m.mediaType === type && m.isSynced).length;
+  getProviderSyncedCount(provider: IntegrationProvider): number {
+    return this.bridge.mediaItems().filter(m => {
+      const src = (m.source || '').toLowerCase();
+      if (src === provider.id.toLowerCase()) return true;
+      if (provider.id === 'letterboxd' && (src === 'letterboxd_rss' || src === 'letterboxd_1click_export')) return true;
+      if (provider.id === 'setlistfm' && (src === 'setlist.fm' || src === 'setlist')) return true;
+      return false;
+    }).length;
   }
 
-  getUnsyncedCount(type: string): number {
-    return this.bridge.mediaItems().filter(m => m.mediaType === type && !m.isSynced).length;
+  getProviderUnsyncedCount(provider: IntegrationProvider): number {
+    return this.bridge.mediaItems().filter(m => m.mediaType === provider.mediaType && !m.isSynced).length;
   }
 
   getItemSubtitle(item: ExtensionMediaItem): string {

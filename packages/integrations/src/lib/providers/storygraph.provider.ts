@@ -3,7 +3,9 @@ import {
   NormalizedMediaEntry,
   ParsedIntegrationResult,
   CsvParseOptions,
-  LogStatus
+  LogStatus,
+  ItemUrlContext,
+  ProviderExtensionConfig
 } from '../types';
 import { parseRawCsv } from '../utils/csv-helper';
 
@@ -15,11 +17,39 @@ export class StoryGraphProvider implements IntegrationProvider {
   readonly mediaType = 'book';
   readonly accentColor = '#3b82f6';
   readonly avatarText = 'SG';
-  readonly exportGuideUrl = 'https://app.thestorygraph.com/export';
+  readonly exportGuideUrl = 'https://app.thestorygraph.com/user-export';
   readonly exportGuideLabel = 'Settings > Manage Account > Export Data ↗';
   readonly exportInstructions = 'Download your StoryGraph user data export (.csv) and upload here.';
   readonly capabilities = ['csv_import', 'extension_sync', 'export_csv'] as const;
   readonly acceptedFileExtensions = ['.csv'];
+
+  readonly extension: ProviderExtensionConfig = {
+    matchPatterns: [
+      'https://app.thestorygraph.com/*',
+      'https://*.thestorygraph.com/*'
+    ],
+    contentScriptFile: 'storygraph.content-script.js',
+    cssFile: 'storygraph.content-script.css',
+    actions: [
+      { id: 'user_export', label: 'Export StoryGraph', description: '1-click export ingestion on user-export' },
+      { id: 'import_goodreads', label: 'Sync StoryGraph', description: 'Open Goodreads import on StoryGraph' }
+    ]
+  };
+
+  getItemUrl(context: ItemUrlContext): string {
+    const meta = context.metadata || {};
+    if (context.externalUrl) return context.externalUrl;
+    if (meta['storygraph_url']) return meta['storygraph_url'];
+    if (meta['url'] && typeof meta['url'] === 'string' && meta['url'].includes('storygraph')) return meta['url'];
+
+    const isbn = meta['isbn'] || meta['isbn13'] || context.externalId;
+    if (isbn && typeof isbn === 'string' && /^[0-9X]{10,13}$/i.test(isbn.trim())) {
+      return `https://app.thestorygraph.com/browse?search_term=${encodeURIComponent(isbn.trim())}`;
+    }
+
+    const cleanTitle = (context.title || '').trim();
+    return `https://app.thestorygraph.com/browse?search_term=${encodeURIComponent(cleanTitle)}`;
+  }
 
   matchesCsvHeader(headers: string[], filename = ''): boolean {
     const lowerName = filename.toLowerCase();

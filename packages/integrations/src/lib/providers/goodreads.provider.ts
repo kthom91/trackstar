@@ -3,7 +3,8 @@ import {
   NormalizedMediaEntry,
   ParsedIntegrationResult,
   CsvParseOptions,
-  LogStatus
+  LogStatus,
+  ItemUrlContext
 } from '../types';
 import { parseRawCsv } from '../utils/csv-helper';
 
@@ -20,6 +21,21 @@ export class GoodreadsProvider implements IntegrationProvider {
   readonly exportInstructions = 'Go to Goodreads > My Books > Import and Export > Export Library and upload the generated CSV file.';
   readonly capabilities = ['csv_import', 'export_csv'] as const;
   readonly acceptedFileExtensions = ['.csv'];
+
+  getItemUrl(context: ItemUrlContext): string {
+    const meta = context.metadata || {};
+    if (context.externalUrl) return context.externalUrl;
+    if (meta['goodreads_url']) return meta['goodreads_url'];
+    if (meta['url'] && typeof meta['url'] === 'string' && meta['url'].includes('goodreads')) return meta['url'];
+
+    const isbn = meta['isbn'] || meta['isbn13'] || context.externalId;
+    if (isbn && typeof isbn === 'string' && /^[0-9X]{10,13}$/i.test(isbn.trim())) {
+      return `https://www.goodreads.com/search?q=${encodeURIComponent(isbn.trim())}`;
+    }
+
+    const cleanTitle = (context.title || '').trim();
+    return `https://www.goodreads.com/search?q=${encodeURIComponent(cleanTitle)}`;
+  }
 
   matchesCsvHeader(headers: string[], filename = ''): boolean {
     const lowerName = filename.toLowerCase();

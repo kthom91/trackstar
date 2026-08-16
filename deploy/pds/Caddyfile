@@ -1,0 +1,20 @@
+# Caddyfile for TrackStar AT Protocol PDS
+# Uses {$PDS_HOSTNAME} from environment variable
+
+{$PDS_HOSTNAME} {
+    # Automatic TLS with Let's Encrypt / ZeroSSL
+    # Ensure ports 80 and 443 are forwarded to your server
+    encode gzip zstd
+
+    reverse_proxy pds:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

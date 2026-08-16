@@ -2,7 +2,7 @@
 
 const DEFAULT_PDS_CONFIG = {
   pdsUrl: 'http://localhost:3000',
-  handle: 'kentrain.trackstar.test',
+  handle: 'user123.trackstar.test',
   password: 'password123',
   accessJwt: '',
   did: ''
@@ -11,7 +11,7 @@ const DEFAULT_PDS_CONFIG = {
 // Initialize default storage on install & purge legacy local sync ledger
 chrome.runtime.onInstalled.addListener(async () => {
   const data = await chrome.storage.local.get('pdsConfig');
-  if (!data.pdsConfig) {
+  if (!data.pdsConfig || data.pdsConfig.handle === 'kentrain.trackstar.test' || !data.pdsConfig.handle) {
     await chrome.storage.local.set({ pdsConfig: DEFAULT_PDS_CONFIG });
   }
   // Remove legacy local sync cache so PDS is 100% the single source of truth
@@ -130,47 +130,49 @@ async function fetchAllMediaLogs() {
 
     // Determine source strictly from PDS record
     const rawSource = (val.source || metadata.source || '').toLowerCase();
-    let source = rawSource || 'trackstar';
-    let isOriginal = false;
-    let isSynced = false;
+    let source = 'trackstar';
 
-    if (mediaType === 'movie') {
-      isOriginal = (
-        rawSource === 'letterboxd' ||
-        rawSource === 'letterboxd_1click_export' ||
-        rawSource === 'letterboxd_rss' ||
-        rkey.startsWith('lb_') ||
-        Boolean(metadata.letterboxd_url) ||
-        Boolean(val.letterboxd_url)
-      );
-      source = isOriginal ? 'letterboxd' : (rawSource || 'trackstar');
-      isSynced = isOriginal;
-    } else if (mediaType === 'book') {
-      isOriginal = (
-        rawSource === 'storygraph' ||
-        rawSource === 'goodreads' ||
-        rkey.startsWith('sg_') ||
-        Boolean(metadata.storygraph_url) ||
-        Boolean(val.storygraph_url)
-      );
-      source = isOriginal ? 'storygraph' : (rawSource || 'trackstar');
-      isSynced = isOriginal;
-    } else if (mediaType === 'concert') {
-      isOriginal = (
-        rawSource === 'setlist.fm' ||
-        rawSource === 'setlist' ||
-        rkey.startsWith('setlist_') ||
-        mediaId.startsWith('setlist:') ||
-        Boolean(metadata.setlist_url) ||
-        Boolean(val.setlist_url)
-      );
-      source = isOriginal ? 'setlist.fm' : (rawSource || 'trackstar');
-      isSynced = isOriginal;
-    } else {
-      isOriginal = Boolean(rawSource && rawSource !== 'trackstar');
-      source = rawSource || 'trackstar';
-      isSynced = isOriginal;
+    if (
+      rawSource === 'letterboxd' ||
+      rawSource === 'letterboxd_1click_export' ||
+      rawSource === 'letterboxd_rss' ||
+      rkey.startsWith('lb_') ||
+      Boolean(metadata.letterboxd_url) ||
+      Boolean(val.letterboxd_url)
+    ) {
+      source = 'letterboxd';
+    } else if (
+      rawSource === 'goodreads' ||
+      rkey.startsWith('gr_') ||
+      Boolean(metadata.goodreads_url) ||
+      Boolean(val.goodreads_url)
+    ) {
+      source = 'goodreads';
+    } else if (
+      rawSource === 'storygraph' ||
+      rkey.startsWith('sg_') ||
+      Boolean(metadata.storygraph_url) ||
+      Boolean(val.storygraph_url)
+    ) {
+      source = 'storygraph';
+    } else if (
+      rawSource === 'setlist.fm' ||
+      rawSource === 'setlist' ||
+      rawSource === 'setlistfm' ||
+      rkey.startsWith('setlist_') ||
+      mediaId.startsWith('setlist:') ||
+      Boolean(metadata.setlist_url) ||
+      Boolean(val.setlist_url)
+    ) {
+      source = 'setlistfm';
+    } else if (rawSource === 'teal' || rkey.startsWith('teal_')) {
+      source = 'teal';
+    } else if (rawSource && rawSource !== 'trackstar') {
+      source = rawSource;
     }
+
+    const isOriginal = source !== 'trackstar';
+    const isSynced = isOriginal;
 
     const coverUrl = metadata.coverUrl || metadata.poster_url || metadata.artist_image || '';
     const title = media.title || mediaId.replace(/^[^:]+:/, '').replace(/_/g, ' ');
@@ -263,6 +265,39 @@ function sanitizeKey(str) {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 36);
+}
+
+// Helper: Sanitize record data for ATProto IPLD CBOR compliance (no floats, clean types)
+function sanitizeAtprotoRecord(val) {
+  if (val === undefined) return undefined;
+  if (val === null) return null;
+  if (typeof val === 'number') {
+    if (!Number.isFinite(val)) return undefined;
+    if (Number.isInteger(val)) return val;
+    return String(val);
+  }
+  if (typeof val === 'string' || typeof val === 'boolean') return val;
+  if (Array.isArray(val)) {
+    return val.map(sanitizeAtprotoRecord).filter(v => v !== undefined);
+  }
+  if (typeof val === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (v === undefined) continue;
+      const s = sanitizeAtprotoRecord(v);
+      if (s !== undefined) out[k] = s;
+    }
+    return out;
+  }
+  return undefined;
+}
+
+// Helper: Sanitize rating to 1-5 integer
+function sanitizeRating(rating) {
+  if (rating === undefined || rating === null || rating === '' || rating === 0) return undefined;
+  const parsed = Number(rating);
+  if (isNaN(parsed) || !Number.isFinite(parsed)) return undefined;
+  return Math.max(1, Math.min(5, Math.round(parsed)));
 }
 
 // Handler: Batch Ingest Records into PDS (Supports both Movies & Books with Deduplication)
@@ -396,7 +431,7 @@ async function handleBatchIngestPds(records) {
           repo: pdsConfig.did,
           collection: 'app.trackstar.media',
           rkey: mediaKey,
-          record: mediaRecord
+          record: sanitizeAtprotoRecord(mediaRecord)
         });
 
         // 2. Put Log Record (Idempotent)
@@ -421,16 +456,16 @@ async function handleBatchIngestPds(records) {
           repo: pdsConfig.did,
           collection: 'app.trackstar.log',
           rkey: logRkey,
-          record: {
+          record: sanitizeAtprotoRecord({
             $type: 'app.trackstar.log',
             mediaItemId: mediaId,
             status: item.status === 'to-read' ? 'want_to_consume' : (item.status === 'currently-reading' ? 'consuming' : (item.status || 'completed')),
-            rating: item.rating ? Number(item.rating) : undefined,
+            rating: sanitizeRating(item.rating),
             review: item.review ? String(item.review).trim() : undefined,
             completedAt: completedIso,
             loggedAt: loggedIso,
             source: source
-          }
+          })
         });
 
         totalProcessed++;
@@ -460,10 +495,10 @@ async function markBooksSynced(books) {
           'GET'
         );
         if (getRes && getRes.value) {
-          const updatedRecord = {
+          const updatedRecord = sanitizeAtprotoRecord({
             ...getRes.value,
             source: 'storygraph'
-          };
+          });
           await makeXrpcRequest('com.atproto.repo.putRecord', 'POST', {
             repo: pdsConfig.did,
             collection: 'app.trackstar.log',
@@ -497,10 +532,10 @@ async function markMoviesSynced(movies) {
           'GET'
         );
         if (getRes && getRes.value) {
-          const updatedRecord = {
+          const updatedRecord = sanitizeAtprotoRecord({
             ...getRes.value,
             source: 'letterboxd'
-          };
+          });
           await makeXrpcRequest('com.atproto.repo.putRecord', 'POST', {
             repo: pdsConfig.did,
             collection: 'app.trackstar.log',
@@ -519,7 +554,7 @@ async function markMoviesSynced(movies) {
 }
 
 // Handler: Mark item as synced directly on the PDS
-async function markItemSyncedOnPds(rkey, source = 'trackstar') {
+async function markItemSyncedOnPds(rkey, source = 'letterboxd') {
   const { pdsConfig } = await chrome.storage.local.get('pdsConfig');
   if (!pdsConfig?.did || !rkey) {
     throw new Error('Not connected to PDS or missing record key.');
@@ -531,10 +566,10 @@ async function markItemSyncedOnPds(rkey, source = 'trackstar') {
   );
 
   if (getRes && getRes.value) {
-    const updatedRecord = {
+    const updatedRecord = sanitizeAtprotoRecord({
       ...getRes.value,
       source: source
-    };
+    });
     await makeXrpcRequest('com.atproto.repo.putRecord', 'POST', {
       repo: pdsConfig.did,
       collection: 'app.trackstar.log',
@@ -608,10 +643,10 @@ async function unmarkItemSyncedOnPds(rkey) {
   );
 
   if (getRes && getRes.value) {
-    const updatedRecord = {
+    const updatedRecord = sanitizeAtprotoRecord({
       ...getRes.value,
       source: 'trackstar'
-    };
+    });
     await makeXrpcRequest('com.atproto.repo.putRecord', 'POST', {
       repo: pdsConfig.did,
       collection: 'app.trackstar.log',
@@ -715,14 +750,14 @@ async function handleSetlistFmSync(userId, apiKey) {
           repo: pdsConfig.did,
           collection: 'app.trackstar.media',
           rkey: mediaKey,
-          record: {
+          record: sanitizeAtprotoRecord({
             $type: 'app.trackstar.media',
             id: mediaId,
             mediaType: 'concert',
             title: title,
             metadataJson: metadata,
             createdAt: new Date().toISOString()
-          }
+          })
         });
 
         // 2. Put Log Record (Idempotent)
@@ -730,14 +765,14 @@ async function handleSetlistFmSync(userId, apiKey) {
           repo: pdsConfig.did,
           collection: 'app.trackstar.log',
           rkey: logRkey,
-          record: {
+          record: sanitizeAtprotoRecord({
             $type: 'app.trackstar.log',
             mediaItemId: mediaId,
             status: 'completed',
             completedAt: isoDate || new Date().toISOString(),
             loggedAt: new Date().toISOString(),
             source: 'setlist.fm'
-          }
+          })
         });
 
         totalProcessed++;
@@ -764,6 +799,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return await loginPds(message.pdsUrl, message.handle, message.password);
       case 'GET_CONFIG': {
         const { pdsConfig } = await chrome.storage.local.get('pdsConfig');
+        if (pdsConfig && (pdsConfig.handle === 'kentrain.trackstar.test' || !pdsConfig.handle)) {
+          pdsConfig.handle = 'user123.trackstar.test';
+          await chrome.storage.local.set({ pdsConfig });
+        }
         return pdsConfig || DEFAULT_PDS_CONFIG;
       }
       case 'FETCH_ALL_MEDIA':

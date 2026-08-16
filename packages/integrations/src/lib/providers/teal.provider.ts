@@ -1,6 +1,7 @@
 import {
   IntegrationProvider,
-  NormalizedMediaEntry
+  NormalizedMediaEntry,
+  ItemUrlContext
 } from '../types';
 
 export interface TealScrobbleRecord {
@@ -26,6 +27,21 @@ export class TealProvider implements IntegrationProvider {
   readonly exportGuideLabel = 'teal.fm ↗';
   readonly exportInstructions = 'Sync live track scrobbles and listening history directly via your AT Protocol PDS.';
   readonly capabilities = ['api_sync', 'extension_sync'] as const;
+
+  getItemUrl(context: ItemUrlContext): string {
+    const meta = context.metadata || {};
+    if (context.externalUrl) return context.externalUrl;
+    if (meta['url'] && typeof meta['url'] === 'string') return meta['url'];
+    if (meta['teal_url']) return meta['teal_url'];
+    if (meta['spotify_url']) return meta['spotify_url'];
+    if (meta['spotifyId'] || (context.externalId && context.externalId.includes('spotify'))) {
+      const id = (meta['spotifyId'] || context.externalId || '').replace(/^spotify:track:/, '');
+      return `https://open.spotify.com/track/${id}`;
+    }
+
+    const cleanTitle = (context.title || '').trim();
+    return `https://teal.fm/search?q=${encodeURIComponent(cleanTitle)}`;
+  }
 
   /**
    * Normalize an AT Protocol Teal scrobble record into a unified media entry.

@@ -1,7 +1,8 @@
 import {
   IntegrationProvider,
   NormalizedMediaEntry,
-  ParsedIntegrationResult
+  ParsedIntegrationResult,
+  ItemUrlContext
 } from '../types';
 
 export interface SetlistFmApiEvent {
@@ -49,6 +50,19 @@ export class SetlistFmProvider implements IntegrationProvider {
   readonly exportGuideLabel = 'setlist.fm > API Settings ↗';
   readonly exportInstructions = 'Enter your setlist.fm username and API key in the extension or sync panel to sync your attended shows.';
   readonly capabilities = ['api_sync', 'extension_sync'] as const;
+
+  getItemUrl(context: ItemUrlContext): string {
+    const meta = context.metadata || {};
+    if (context.externalUrl) return context.externalUrl;
+    if (meta['setlist_url']) return meta['setlist_url'];
+    if (meta['url'] && typeof meta['url'] === 'string' && meta['url'].includes('setlist.fm')) return meta['url'];
+    if (context.externalId && /^[a-f0-9]+$/i.test(context.externalId.trim())) {
+      return `https://www.setlist.fm/setlist/${context.externalId.trim()}.html`;
+    }
+
+    const artist = meta['artist'] || context.title?.split(' at ')[0]?.split(' @ ')[0] || context.title || '';
+    return `https://www.setlist.fm/search?query=${encodeURIComponent(artist.trim())}`;
+  }
 
   /**
    * Normalize a raw setlist.fm API concert entry into a unified media entry.

@@ -1,27 +1,29 @@
 #!/usr/bin/env node
 /**
- * Builds the browser extension content scripts and service worker using esbuild.
- *
- * - src/content_scripts/letterboxd.js  → content_scripts/letterboxd.js  (bundled, fflate inlined)
- * - src/content_scripts/storygraph.js  → content_scripts/storygraph.js  (bundled, no external deps)
- * - src/background/service_worker.js   → background/service_worker.js   (bundled)
- *
- * CSS files are copied as-is (they don't need bundling).
+ * Dynamic Content Script & Background Worker Bundler
+ * Reads provider content scripts and stylesheets directly from @trackstar/integrations
+ * and compiles production-ready bundles for the browser extension.
  */
 
 import esbuild from 'esbuild';
-import { copyFileSync, mkdirSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
+const monorepoRoot = resolve(root, '../..');
+const providersDir = join(monorepoRoot, 'packages/integrations/src/lib/providers');
 
+// Target output directories (both local source build and dist for extension load)
 const outContentScripts = join(root, 'content_scripts');
 const outBackground = join(root, 'background');
+const distContentScripts = join(monorepoRoot, 'dist/browser-extension/content_scripts');
+const distBackground = join(monorepoRoot, 'dist/browser-extension/background');
 
-mkdirSync(outContentScripts, { recursive: true });
-mkdirSync(outBackground, { recursive: true });
+for (const dir of [outContentScripts, outBackground, distContentScripts, distBackground]) {
+  mkdirSync(dir, { recursive: true });
+}
 
 const sharedOptions = {
   bundle: true,
@@ -31,37 +33,62 @@ const sharedOptions = {
   logLevel: 'info',
 };
 
-await Promise.all([
-  // letterboxd content script — bundles fflate
-  esbuild.build({
-    ...sharedOptions,
-    entryPoints: [join(root, 'src/content_scripts/letterboxd.js')],
-    outfile: join(outContentScripts, 'letterboxd.js'),
-  }),
+// Provider content scripts mapping from @trackstar/integrations
+const providerScripts = [
+  {
+    name: 'letterboxd',
+    scriptSrc: join(providersDir, 'letterboxd.content-script.js'),
+    cssSrc: join(providersDir, 'letterboxd.content-script.css'),
+    scriptOut: 'letterboxd.js',
+    cssOut: 'letterboxd.css'
+  },
+  {
+    name: 'storygraph',
+    scriptSrc: join(providersDir, 'storygraph.content-script.js'),
+    cssSrc: join(providersDir, 'storygraph.content-script.css'),
+    scriptOut: 'storygraph.js',
+    cssOut: 'storygraph.css'
+  }
+];
 
-  // storygraph content script
-  esbuild.build({
-    ...sharedOptions,
-    entryPoints: [join(root, 'src/content_scripts/storygraph.js')],
-    outfile: join(outContentScripts, 'storygraph.js'),
-  }),
+const buildPromises = [];
 
-  // background service worker
+for (const p of providerScripts) {
+  if (existsSync(p.scriptSrc)) {
+    buildPromises.push(
+      esbuild.build({
+        ...sharedOptions,
+        entryPoints: [p.scriptSrc],
+        outfile: join(outContentScripts, p.scriptOut),
+      }).then(() => {
+        if (existsSync(distContentScripts)) {
+          copyFileSync(join(outContentScripts, p.scriptOut), join(distContentScripts, p.scriptOut));
+        }
+      })
+    );
+  }
+
+  if (existsSync(p.cssSrc)) {
+    copyFileSync(p.cssSrc, join(outContentScripts, p.cssOut));
+    if (existsSync(distContentScripts)) {
+      copyFileSync(p.cssSrc, join(distContentScripts, p.cssOut));
+    }
+  }
+}
+
+// Build background service worker
+buildPromises.push(
   esbuild.build({
     ...sharedOptions,
     entryPoints: [join(root, 'src/background/service_worker.js')],
     outfile: join(outBackground, 'service_worker.js'),
-  }),
-]);
-
-// Copy CSS files as-is (no bundling needed)
-copyFileSync(
-  join(root, 'src/content_scripts/letterboxd.css'),
-  join(outContentScripts, 'letterboxd.css')
-);
-copyFileSync(
-  join(root, 'src/content_scripts/storygraph.css'),
-  join(outContentScripts, 'storygraph.css')
+  }).then(() => {
+    if (existsSync(distBackground)) {
+      copyFileSync(join(outBackground, 'service_worker.js'), join(distBackground, 'service_worker.js'));
+    }
+  })
 );
 
-console.log('✓ Content scripts built successfully.');
+await Promise.all(buildPromises);
+
+console.log('✓ Provider content scripts & service worker compiled successfully from @trackstar/integrations.');

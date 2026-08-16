@@ -418,7 +418,8 @@ export class LogModalComponent implements OnInit, OnDestroy {
         review: this.review.trim() || undefined,
         completedAt: completedAt,
         mediaItemId: this.selectedSuggestion?.id,
-        metadataJson: this.selectedSuggestion?.metadataJson
+        metadataJson: this.selectedSuggestion?.metadataJson,
+        source: 'trackstar'
       });
       this.saved.emit();
       this.closeModal();

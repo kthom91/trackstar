@@ -86,8 +86,7 @@ export class DirectMetadataService {
               poster_url: posterLarge,
               year: year ? parseInt(year, 10) : undefined,
               overview: m.overview,
-              vote_average: m.vote_average,
-              source: 'tmdb_autocomplete'
+              vote_average: m.vote_average != null ? String(m.vote_average) : undefined
             }
           };
         });
@@ -134,8 +133,7 @@ export class DirectMetadataService {
               year: year ? parseInt(year, 10) : undefined,
               isbn: isbn,
               coverUrl: coverUrl,
-              openlibrary_key: doc.key,
-              source: 'openlibrary_autocomplete'
+              openlibrary_key: doc.key
             }
           };
         });
@@ -215,8 +213,7 @@ export class DirectMetadataService {
                 poster_url: cover,
                 listeners: a.listeners,
                 mbid: a.mbid || undefined,
-                lastfm_url: a.url,
-                source: 'lastfm_autocomplete'
+                lastfm_url: a.url
               }
             };
           });
@@ -240,8 +237,7 @@ export class DirectMetadataService {
           mediaType: 'concert' as const,
           metadataJson: {
             artist: a.name,
-            mbid: a.id,
-            source: 'musicbrainz_artist'
+            mbid: a.id
           }
         }));
       }
@@ -291,8 +287,7 @@ export class DirectMetadataService {
           coverUrl: coverId ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg` : undefined,
           creator: author,
           year: doc.first_publish_year ? String(doc.first_publish_year) : undefined,
-          genres: doc.subject ? doc.subject.slice(0, 3) : undefined,
-          raw: doc
+          genres: doc.subject ? doc.subject.slice(0, 3) : undefined
         };
       }
     } catch (err) {
@@ -322,7 +317,7 @@ export class DirectMetadataService {
               description: movie.overview,
               year: movie.release_date ? movie.release_date.split('-')[0] : undefined,
               creator: movie.tagline,
-              raw: movie
+              vote_average: movie.vote_average != null ? String(movie.vote_average) : undefined
             };
           }
         }
@@ -361,7 +356,7 @@ export class DirectMetadataService {
           poster_url: posterUrl,
           description: movie.overview,
           year: movie.release_date ? movie.release_date.split('-')[0] : undefined,
-          raw: movie
+          vote_average: movie.vote_average != null ? String(movie.vote_average) : undefined
         };
       }
     } catch (err) {
@@ -422,8 +417,7 @@ export class DirectMetadataService {
             poster_url: coverUrl,
             description: bioSummary || undefined,
             genres: genres,
-            externalUrl: artist.url,
-            raw: artist
+            externalUrl: artist.url
           };
         }
       } catch (err) {

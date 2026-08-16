@@ -56,6 +56,30 @@ export interface CsvParseOptions {
   onProgress?: (processed: number, total: number) => void;
 }
 
+export interface ItemUrlContext {
+  title: string;
+  externalId?: string;
+  externalUrl?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ProviderExtensionAction {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+export interface ProviderExtensionConfig {
+  /** URL match patterns where Chrome should inject this content script */
+  matchPatterns: readonly string[];
+  /** Relative path to content script entry file */
+  contentScriptFile?: string;
+  /** Relative path to CSS stylesheet */
+  cssFile?: string;
+  /** Declared extension actions / capabilities */
+  actions?: readonly ProviderExtensionAction[];
+}
+
 export interface IntegrationProvider {
   id: string;
   name: string;
@@ -81,4 +105,10 @@ export interface IntegrationProvider {
 
   // CSV format identification
   matchesCsvHeader?: (headers: string[], filename?: string) => boolean;
+
+  // External URL resolution
+  getItemUrl?: (context: ItemUrlContext) => string | undefined;
+
+  // Browser Extension integration config
+  extension?: ProviderExtensionConfig;
 }

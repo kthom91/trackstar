@@ -7,7 +7,7 @@ A complete Bruno API collection to test, explore, and interact directly with you
 1. Open [Bruno](https://usebruno.com/).
 2. Click **Open Collection** and select the `bruno/` directory inside this repository.
 3. In the top-right environment dropdown, select **Local**.
-4. Run request **`1-server-and-auth/2-Create-Session-Login`** — this will authenticate against `http://localhost:3000` with test credentials (`kentrain.trackstar.test` / `password123`) and automatically set `{{accessJwt}}` and `{{did}}` for all subsequent requests!
+4. Run request **`1-server-and-auth/2-Create-Session-Login`** — this will authenticate against `http://localhost:3000` with test credentials (`user123.trackstar.test` / `password123`) and automatically set `{{accessJwt}}` and `{{did}}` for all subsequent requests!
 
 ---
 

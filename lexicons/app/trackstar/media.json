@@ -22,8 +22,8 @@
             "type": "string" 
           },
           "metadataJson": { 
-            "type": "string", 
-            "description": "JSON string of additional metadata" 
+            "type": "unknown", 
+            "description": "Additional metadata object or JSON string" 
           },
           "createdAt": { 
             "type": "string", 

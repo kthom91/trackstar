@@ -1,11 +1,20 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { PdsAuthService } from './pds-auth.service';
-import { DirectMetadataService, EnrichedMetadata } from './direct-metadata.service';
-import { ModalService } from './modal.service';
-import { PdsMediaItem, PdsUserLog, CreateLogPayload, generateTid, makeRkeySafe, LEXICONS } from '@trackstar/pds';
+import { Injectable, inject, signal } from '@angular/core';
 import { BskyAgent } from '@atproto/api';
+import {
+  CreateLogPayload,
+  PdsMediaItem,
+  PdsUserLog,
+  generateTid,
+  getSourceDisplayName,
+  makeRkeySafe,
+  sanitizeAtprotoRecord,
+  sanitizeRating
+} from '@trackstar/pds';
+import { DirectMetadataService } from './direct-metadata.service';
+import { ModalService } from './modal.service';
+import { PdsAuthService } from './pds-auth.service';
 
-export type { PdsMediaItem, PdsUserLog, CreateLogPayload };
+export type { CreateLogPayload, PdsMediaItem, PdsUserLog };
 
 const CACHE_LOGS_KEY = 'trackstar_cached_logs';
 const CACHE_MEDIA_KEY = 'trackstar_cached_media';
@@ -45,7 +54,7 @@ export class PdsRepositoryService {
         const arr: [string, PdsMediaItem][] = JSON.parse(raw);
         return new Map(arr);
       }
-    } catch {}
+    } catch { }
     return new Map();
   }
 
@@ -72,11 +81,11 @@ export class PdsRepositoryService {
       return await operation(this.auth.getAgent(), session.did);
     } catch (err: any) {
       const isAuthErr = err?.status === 401 ||
-                        err?.message?.includes('AuthenticationRequired') ||
-                        err?.message?.includes('ExpiredToken') ||
-                        err?.message?.includes('401') ||
-                        err?.error === 'AuthMissing' ||
-                        err?.error === 'ExpiredToken';
+        err?.message?.includes('AuthenticationRequired') ||
+        err?.message?.includes('ExpiredToken') ||
+        err?.message?.includes('401') ||
+        err?.error === 'AuthMissing' ||
+        err?.error === 'ExpiredToken';
 
       if (isAuthErr) {
         console.warn('[PdsRepo] Received 401 Unauthorized, refreshing session token...');
@@ -140,9 +149,9 @@ export class PdsRepositoryService {
 
             // Preserve existing cached enrichments (such as coverUrl, poster_url, creator)
             const cached = cachedMediaMap.get(rawId) ||
-                           cachedMediaMap.get(rkey) ||
-                           cachedMediaMap.get(makeRkeySafe(rawId)) ||
-                           (rawId.includes(':') ? cachedMediaMap.get(rawId.replace(/:/g, '_')) : undefined);
+              cachedMediaMap.get(rkey) ||
+              cachedMediaMap.get(makeRkeySafe(rawId)) ||
+              (rawId.includes(':') ? cachedMediaMap.get(rawId.replace(/:/g, '_')) : undefined);
 
             if (cached && cached.metadataJson) {
               const cachedMeta = typeof cached.metadataJson === 'string'
@@ -204,11 +213,11 @@ export class PdsRepositoryService {
             const val = rec.value as any;
             const rkey = rec.uri.split('/').pop() || '';
             const mediaItemId = val.mediaItemId || '';
-            
+
             let mediaItem = mediaMap.get(mediaItemId) ||
-                            mediaMap.get(makeRkeySafe(mediaItemId)) ||
-                            (mediaItemId.includes(':') ? mediaMap.get(mediaItemId.replace(/:/g, '_')) : undefined) ||
-                            (mediaItemId.includes('_') ? mediaMap.get(mediaItemId.replace(/_/g, ':')) : undefined);
+              mediaMap.get(makeRkeySafe(mediaItemId)) ||
+              (mediaItemId.includes(':') ? mediaMap.get(mediaItemId.replace(/:/g, '_')) : undefined) ||
+              (mediaItemId.includes('_') ? mediaMap.get(mediaItemId.replace(/_/g, ':')) : undefined);
 
             if (!mediaItem) {
               // Try finding in cache
@@ -254,6 +263,11 @@ export class PdsRepositoryService {
               };
             }
 
+            let rawSource = val.source || mediaItem.metadataJson?.['source'];
+            if (rawSource && (rawSource.includes('_autocomplete') || rawSource === 'musicbrainz_artist')) {
+              rawSource = 'trackstar';
+            }
+            const normalizedSource = rawSource || 'trackstar';
             const log: PdsUserLog = {
               id: rkey,
               atUri: rec.uri,
@@ -264,7 +278,8 @@ export class PdsRepositoryService {
               review: val.review,
               loggedAt: val.loggedAt || new Date().toISOString(),
               completedAt: val.completedAt,
-              source: val.source || mediaItem.metadataJson?.['source'],
+              source: normalizedSource,
+              sourceDisplayName: getSourceDisplayName(normalizedSource, mediaItem.mediaType),
               mediaItem: mediaItem
             };
             loadedLogs.push(log);
@@ -365,18 +380,20 @@ export class PdsRepositoryService {
           if (this.auth.isAuthenticated()) {
             const mediaRkey = mItem.rkey || makeRkeySafe(mItem.id);
             this.executeWithAuth(async (agent, repo) => {
+              const sanitizedRecord = sanitizeAtprotoRecord({
+                $type: 'app.trackstar.media',
+                id: mItem.id,
+                mediaType: mItem.mediaType,
+                title: mItem.title,
+                metadataJson: mItem.metadataJson,
+                createdAt: mItem.createdAt || new Date().toISOString()
+              });
+
               await agent.com.atproto.repo.putRecord({
                 collection: 'app.trackstar.media',
                 repo: repo,
                 rkey: mediaRkey,
-                record: {
-                  $type: 'app.trackstar.media',
-                  id: mItem.id,
-                  mediaType: mItem.mediaType,
-                  title: mItem.title,
-                  metadataJson: mItem.metadataJson,
-                  createdAt: mItem.createdAt || new Date().toISOString()
-                }
+                record: sanitizedRecord
               });
             }).catch(pdsErr => {
               console.warn('[PdsRepo] Background PDS media enrichment save skipped:', pdsErr);
@@ -414,24 +431,26 @@ export class PdsRepositoryService {
     metadataJson?: Record<string, any>;
   }): Promise<PdsUserLog> {
     return await this.executeWithAuth(async (agent, repo) => {
-      // 1. Prepare metadata
-      let metadata = payload.metadataJson || {};
-      if (payload.source) {
-        metadata['source'] = payload.source;
-      }
+      // 1. Determine canonical source (defaults to 'trackstar' for manual UI entries)
+      const source = payload.source || 'trackstar';
 
-      // 2. Prepare Media Item record
+      // 2. Prepare metadata
+      let metadata = { ...(payload.metadataJson || {}) };
+      metadata['source'] = source;
+      metadata = sanitizeAtprotoRecord(metadata);
+
+      // 3. Prepare Media Item record
       const mediaId = payload.mediaItemId || `${payload.mediaType}:${payload.title.toLowerCase().replace(/\s+/g, '_')}`;
       const mediaRkey = makeRkeySafe(mediaId);
 
-      const mediaRecord = {
+      const mediaRecord = sanitizeAtprotoRecord({
         $type: 'app.trackstar.media',
         id: mediaId,
         mediaType: payload.mediaType,
         title: payload.title,
         metadataJson: metadata,
         createdAt: new Date().toISOString()
-      };
+      });
 
       // Put Media record directly into PDS
       await agent.com.atproto.repo.putRecord({
@@ -451,27 +470,20 @@ export class PdsRepositoryService {
         rkey: mediaRkey
       };
 
-      // 3. Prepare User Log record
+      // 4. Prepare User Log record
       const logRkey = generateTid();
       const loggedAt = payload.loggedAt || new Date().toISOString();
 
-      const logRecord: Record<string, any> = {
+      const logRecord: Record<string, any> = sanitizeAtprotoRecord({
         $type: 'app.trackstar.log',
         mediaItemId: mediaId,
         status: payload.status,
+        rating: sanitizeRating(payload.rating),
+        review: payload.review?.trim() || undefined,
         loggedAt: loggedAt,
-        source: payload.source || 'trackstar'
-      };
-
-      if (payload.rating !== undefined) {
-        logRecord['rating'] = payload.rating;
-      }
-      if (payload.review) {
-        logRecord['review'] = payload.review;
-      }
-      if (payload.completedAt) {
-        logRecord['completedAt'] = payload.completedAt;
-      }
+        completedAt: payload.completedAt || (payload.status === 'completed' ? loggedAt : undefined),
+        source: source
+      });
 
       // Put User Log record directly into PDS
       const logRes = await agent.com.atproto.repo.putRecord({
@@ -491,6 +503,8 @@ export class PdsRepositoryService {
         review: payload.review,
         loggedAt: loggedAt,
         completedAt: payload.completedAt,
+        source: source,
+        sourceDisplayName: getSourceDisplayName(source, payload.mediaType),
         mediaItem: savedMediaItem
       };
 
@@ -536,7 +550,7 @@ export class PdsRepositoryService {
     }
     if (query && query.trim()) {
       const q = query.toLowerCase().trim();
-      result = result.filter(l => 
+      result = result.filter(l =>
         (l.mediaItem?.title || '').toLowerCase().includes(q) ||
         (l.review || '').toLowerCase().includes(q)
       );

@@ -140,7 +140,7 @@ import { DirectMetadataService } from '../../services/direct-metadata.service';
                    [(ngModel)]="identifier" 
                    name="identifier" 
                    required
-                   placeholder="kentrain.trackstar.test or alice.bsky.social"
+                   placeholder="user123.trackstar.test or alice.bsky.social"
                    class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2 text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
           </div>
 
@@ -185,7 +185,7 @@ export class PdsLoginModalComponent {
   close = output<void>();
 
   pdsUrl = 'http://localhost:3000';
-  identifier = 'kentrain.trackstar.test';
+  identifier = 'user123.trackstar.test';
   password = 'password123';
 
   tmdbKey = this.metadata.getTmdbApiKey();
@@ -199,7 +199,7 @@ export class PdsLoginModalComponent {
       this.identifier = '';
       this.password = '';
     } else {
-      this.identifier = 'kentrain.trackstar.test';
+      this.identifier = 'user123.trackstar.test';
       this.password = 'password123';
     }
   }
@@ -242,7 +242,7 @@ export class PdsLoginModalComponent {
     const s = this.auth.session();
     if (s) {
       this.pdsUrl = s.pdsUrl || 'http://localhost:3000';
-      this.identifier = s.handle || 'kentrain.trackstar.test';
+      this.identifier = s.handle || 'user123.trackstar.test';
     }
     this.auth.logout();
   }

@@ -40,6 +40,7 @@ export interface PdsUserLog {
   loggedAt: string;
   completedAt?: string;
   source?: string;
+  sourceDisplayName?: string;
   mediaItem?: PdsMediaItem;
 }
 

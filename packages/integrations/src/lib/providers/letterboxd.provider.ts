@@ -2,7 +2,9 @@ import {
   IntegrationProvider,
   NormalizedMediaEntry,
   ParsedIntegrationResult,
-  CsvParseOptions
+  CsvParseOptions,
+  ItemUrlContext,
+  ProviderExtensionConfig
 } from '../types';
 import { parseRawCsv } from '../utils/csv-helper';
 
@@ -19,6 +21,31 @@ export class LetterboxdProvider implements IntegrationProvider {
   readonly exportInstructions = 'Upload your diary.csv, watched.csv, or watchlist.csv export file.';
   readonly capabilities = ['csv_import', 'rss_sync', 'extension_sync', 'export_csv'] as const;
   readonly acceptedFileExtensions = ['.csv'];
+
+  readonly extension: ProviderExtensionConfig = {
+    matchPatterns: [
+      'https://letterboxd.com/*',
+      'https://*.letterboxd.com/*'
+    ],
+    contentScriptFile: 'letterboxd.content-script.js',
+    cssFile: 'letterboxd.content-script.css',
+    actions: [
+      { id: '1click_export', label: 'Export Letterboxd', description: 'Trigger 1-click export on settings/data/' },
+      { id: 'watchlist_sync', label: 'Sync Watchlist', description: 'Ingest watchlist to PDS' },
+      { id: 'diary_sync', label: 'Sync Diary', description: 'Prefill Letterboxd review modal with PDS log' }
+    ]
+  };
+
+  getItemUrl(context: ItemUrlContext): string {
+    const meta = context.metadata || {};
+    if (context.externalUrl) return context.externalUrl;
+    if (meta['letterboxd_url']) return meta['letterboxd_url'];
+    if (meta['url'] && typeof meta['url'] === 'string' && meta['url'].includes('letterboxd')) return meta['url'];
+    if (context.externalId && context.externalId.startsWith('http')) return context.externalId;
+
+    const cleanTitle = (context.title || '').replace(/\s*\(\d{4}\)$/, '').trim();
+    return `https://letterboxd.com/search/${encodeURIComponent(cleanTitle)}/`;
+  }
 
   matchesCsvHeader(headers: string[], filename = ''): boolean {
     const lowerName = filename.toLowerCase();
