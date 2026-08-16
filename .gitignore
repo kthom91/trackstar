@@ -1,0 +1,36 @@
+# TrackStar — .gitignore
+
+# Antigravity & AI Agent directories
+.gemini/
+.agents/
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+
+# Nx cache
+.nx/cache
+.nx/workspace-data
+
+# Environment & secrets
+.env
+.env.*
+*.env
+**/*.env
+!*.env.example
+!*.env.template
+.envrc
+bruno/environments/*.env
+bruno/.env*
+.bru/
+
+# TrackStar local PDS data
+data/
+*.db
+*.db-journal
+
+# macOS / IDE
+.DS_Store
+.vscode/
+.idea/
