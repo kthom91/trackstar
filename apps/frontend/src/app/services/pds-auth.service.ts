@@ -35,10 +35,46 @@ export class PdsAuthService {
     if (typeof window === 'undefined') return;
 
     try {
-      this.oauthClient = new BrowserOAuthClient({
-        handleResolver: 'https://bsky.social',
-        clientMetadata: undefined
-      });
+      const hostname = window.location.hostname;
+      const isLoopback = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+
+      if (isLoopback) {
+        this.oauthClient = new BrowserOAuthClient({
+          handleResolver: 'https://bsky.social'
+        });
+      } else {
+        const origin = window.location.origin;
+        let pathname = window.location.pathname.replace(/\/+$/, '');
+        if (pathname.includes('.')) {
+          pathname = pathname.substring(0, pathname.lastIndexOf('/'));
+        }
+        const clientMetadataUrl = `${origin}${pathname}/client-metadata.json`;
+
+        try {
+          this.oauthClient = await BrowserOAuthClient.load({
+            clientId: clientMetadataUrl,
+            handleResolver: 'https://bsky.social'
+          });
+        } catch (loadErr) {
+          console.warn('[PdsAuthService] BrowserOAuthClient.load notice, trying direct clientMetadata:', loadErr);
+          const currentUrl = `${origin}${pathname}/`;
+          this.oauthClient = new BrowserOAuthClient({
+            handleResolver: 'https://bsky.social',
+            clientMetadata: {
+              client_id: clientMetadataUrl,
+              client_name: 'TrackStar',
+              client_uri: currentUrl,
+              redirect_uris: [currentUrl, `${origin}${pathname}`],
+              scope: 'atproto transition:generic',
+              grant_types: ['authorization_code', 'refresh_token'],
+              response_types: ['code'],
+              token_endpoint_auth_method: 'none',
+              application_type: 'web',
+              dpop_bound_access_tokens: true
+            }
+          });
+        }
+      }
 
       // Handle OAuth redirect callback and restore existing OAuth session
       const result = await this.oauthClient.init();
@@ -72,7 +108,7 @@ export class PdsAuthService {
 
         // Clean query parameters from URL if returning from OAuth redirect
         if (window.location.search.includes('code=') || window.location.search.includes('state=')) {
-          window.history.replaceState({}, document.title, window.location.pathname);
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
         }
       }
     } catch (err) {
@@ -88,7 +124,7 @@ export class PdsAuthService {
       await this.initOAuth();
     }
     if (!this.oauthClient) {
-      throw new Error('OAuth Client could not be initialized');
+      throw new Error('OAuth Client could not be initialized on this host. Try connecting with an App Password instead.');
     }
 
     const cleanHandle = handle.trim().replace(/^@/, '');

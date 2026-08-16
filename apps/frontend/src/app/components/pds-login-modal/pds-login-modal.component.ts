@@ -102,32 +102,79 @@ import { DirectMetadataService } from '../../services/direct-metadata.service';
         <div *ngIf="!auth.isAuthenticated()" class="space-y-4">
 
           <!-- Method Switcher -->
-          <div class="grid grid-cols-2 p-1 bg-[#f0ede6] rounded-xl font-mono text-xs border border-[rgba(14,14,14,0.1)]">
+          <div class="grid grid-cols-3 p-1 bg-[#f0ede6] rounded-xl font-mono text-[11px] border border-[rgba(14,14,14,0.1)]">
             <button type="button"
-                    (click)="authMode = 'oauth'"
-                    [ngClass]="authMode === 'oauth' ? 'bg-[#0e0e0e] text-[#f0ede6] font-bold shadow-xs' : 'text-[#3d3830] hover:text-[#0e0e0e]'"
+                    (click)="setAuthMode('apppassword')"
+                    [ngClass]="authMode === 'apppassword' ? 'bg-[#0e0e0e] text-[#f0ede6] font-bold shadow-xs' : 'text-[#3d3830] hover:text-[#0e0e0e]'"
                     class="py-1.5 rounded-lg transition-all text-center">
-              🦋 AT Protocol OAuth
+              🔑 App Password
             </button>
             <button type="button"
-                    (click)="authMode = 'password'"
-                    [ngClass]="authMode === 'password' ? 'bg-[#0e0e0e] text-[#f0ede6] font-bold shadow-xs' : 'text-[#3d3830] hover:text-[#0e0e0e]'"
+                    (click)="setAuthMode('oauth')"
+                    [ngClass]="authMode === 'oauth' ? 'bg-[#0e0e0e] text-[#f0ede6] font-bold shadow-xs' : 'text-[#3d3830] hover:text-[#0e0e0e]'"
                     class="py-1.5 rounded-lg transition-all text-center">
-              🖥️ Local / Password
+              🦋 OAuth
+            </button>
+            <button type="button"
+                    (click)="setAuthMode('custom')"
+                    [ngClass]="authMode === 'custom' ? 'bg-[#0e0e0e] text-[#f0ede6] font-bold shadow-xs' : 'text-[#3d3830] hover:text-[#0e0e0e]'"
+                    class="py-1.5 rounded-lg transition-all text-center">
+              🖥️ Custom PDS
             </button>
           </div>
 
-          <!-- 1. AT Protocol OAuth Form (Recommended SPA flow) -->
+          <!-- 1. Bluesky App Password Form (Instant & 100% reliable) -->
+          <form *ngIf="authMode === 'apppassword'" (ngSubmit)="handleAppPasswordLogin()" class="space-y-3.5">
+            <div class="space-y-1 font-mono text-xs">
+              <label class="block text-[10px] font-bold uppercase text-[#3d3830] tracking-wider">Bluesky Handle</label>
+              <input type="text" 
+                     [(ngModel)]="identifier" 
+                     name="identifier" 
+                     required
+                     placeholder="e.g. kthom91.bsky.social" 
+                     class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2 text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+            </div>
+
+            <div class="space-y-1 font-mono text-xs">
+              <div class="flex items-center justify-between">
+                <label class="block text-[10px] font-bold uppercase text-[#3d3830] tracking-wider">App Password</label>
+                <a href="https://bsky.app/settings/app-passwords" target="_blank" rel="noopener noreferrer" class="text-[10px] text-[#0e0e0e] hover:underline">Create App Password ↗</a>
+              </div>
+              <input type="password" 
+                     [(ngModel)]="password" 
+                     name="password" 
+                     required
+                     placeholder="••••-••••-••••-••••"
+                     class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2 text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
+              <p class="text-[10px] text-[#9a8f7e]">
+                In Bluesky app: <em>Settings &rarr; Privacy & Security &rarr; App Passwords</em>.
+              </p>
+            </div>
+
+            <!-- Error Message -->
+            <div *ngIf="errorMessage" class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl font-mono text-xs text-rose-900">
+              {{ errorMessage }}
+            </div>
+
+            <button type="submit" 
+                    [disabled]="submitting || !identifier || !password"
+                    class="w-full py-2.5 bg-[#0e0e0e] hover:bg-neutral-800 disabled:opacity-40 text-[#f0ede6] font-mono font-semibold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center space-x-2">
+              <div *ngIf="submitting" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>{{ submitting ? 'Connecting to Bluesky...' : 'Sign In with App Password' }}</span>
+            </button>
+          </form>
+
+          <!-- 2. AT Protocol OAuth Form -->
           <div *ngIf="authMode === 'oauth'" class="space-y-4">
             <div class="space-y-1.5 font-mono text-xs">
               <label class="block text-[10px] font-bold uppercase text-[#3d3830] tracking-wider">Your Bluesky / AT Protocol Handle</label>
               <input type="text" 
                      [(ngModel)]="identifier" 
                      (keydown.enter)="handleOAuthLogin()"
-                     placeholder="e.g. kthom91.bsky.social or alice.com"
+                     placeholder="e.g. kthom91.bsky.social"
                      class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2.5 text-xs text-[#0e0e0e] placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
               <p class="text-[10px] text-[#9a8f7e]">
-                Authenticates securely via standard PKCE OAuth. TrackStar never sees your password.
+                Redirects to Bluesky's authorization server to authenticate via standard PKCE OAuth.
               </p>
             </div>
 
@@ -141,15 +188,14 @@ import { DirectMetadataService } from '../../services/direct-metadata.service';
                     [disabled]="submitting || !identifier.trim()"
                     class="w-full py-2.5 bg-[#0e0e0e] hover:bg-neutral-800 disabled:opacity-40 text-[#f0ede6] font-mono font-semibold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center space-x-2">
               <div *ngIf="submitting" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>{{ submitting ? 'Redirecting to PDS...' : 'Sign In with AT Protocol (OAuth)' }}</span>
+              <span>{{ submitting ? 'Redirecting to Bluesky...' : 'Sign In with OAuth' }}</span>
             </button>
           </div>
 
-          <!-- 2. Direct Local / Password Form -->
-          <form *ngIf="authMode === 'password'" (ngSubmit)="handlePasswordLogin()" class="space-y-3.5">
-            
+          <!-- 3. Custom / Local PDS Form -->
+          <form *ngIf="authMode === 'custom'" (ngSubmit)="handleCustomLogin()" class="space-y-3.5">
             <div class="space-y-1 font-mono text-xs">
-              <label class="block text-[10px] font-bold uppercase text-[#3d3830] tracking-wider">PDS Endpoint</label>
+              <label class="block text-[10px] font-bold uppercase text-[#3d3830] tracking-wider">PDS Endpoint URL</label>
               <input type="url" 
                      [(ngModel)]="pdsUrl" 
                      name="pdsUrl" 
@@ -187,7 +233,7 @@ import { DirectMetadataService } from '../../services/direct-metadata.service';
                     [disabled]="submitting || !identifier || !password"
                     class="w-full py-2.5 bg-[#0e0e0e] hover:bg-neutral-800 disabled:opacity-40 text-[#f0ede6] font-mono font-semibold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center space-x-2">
               <div *ngIf="submitting" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>{{ submitting ? 'Connecting to PDS...' : 'Connect with Password' }}</span>
+              <span>{{ submitting ? 'Connecting to PDS...' : 'Connect to Custom PDS' }}</span>
             </button>
           </form>
 
@@ -204,7 +250,7 @@ export class PdsLoginModalComponent {
 
   close = output<void>();
 
-  authMode: 'oauth' | 'password' = 'oauth';
+  authMode: 'apppassword' | 'oauth' | 'custom' = 'apppassword';
   pdsUrl = 'http://localhost:3000';
   identifier = '';
   password = '';
@@ -213,6 +259,11 @@ export class PdsLoginModalComponent {
   lastfmKey = this.metadata.getLastfmApiKey();
   submitting = false;
   errorMessage: string | null = null;
+
+  setAuthMode(mode: 'apppassword' | 'oauth' | 'custom') {
+    this.authMode = mode;
+    this.errorMessage = null;
+  }
 
   onTmdbKeyChange() {
     this.metadata.setTmdbApiKey(this.tmdbKey);
@@ -228,6 +279,22 @@ export class PdsLoginModalComponent {
     }
   }
 
+  async handleAppPasswordLogin() {
+    this.submitting = true;
+    this.errorMessage = null;
+
+    try {
+      await this.auth.login('https://bsky.social', this.identifier, this.password);
+      await this.repo.syncFromPds();
+      this.close.emit();
+    } catch (err: any) {
+      console.error('Bluesky App Password Login Error:', err);
+      this.errorMessage = err?.message || 'Failed to authenticate with Bluesky. Please verify your handle and App Password.';
+    } finally {
+      this.submitting = false;
+    }
+  }
+
   async handleOAuthLogin() {
     if (!this.identifier.trim()) return;
     this.submitting = true;
@@ -237,12 +304,12 @@ export class PdsLoginModalComponent {
       await this.auth.loginWithOAuth(this.identifier);
     } catch (err: any) {
       console.error('OAuth Login Error:', err);
-      this.errorMessage = err?.message || 'Failed to initiate AT Protocol OAuth login.';
+      this.errorMessage = err?.message || 'Failed to initiate OAuth login. If running into domain issues, try using the App Password tab.';
       this.submitting = false;
     }
   }
 
-  async handlePasswordLogin() {
+  async handleCustomLogin() {
     this.submitting = true;
     this.errorMessage = null;
 
@@ -251,7 +318,7 @@ export class PdsLoginModalComponent {
       await this.repo.syncFromPds();
       this.close.emit();
     } catch (err: any) {
-      console.error('Password Login error:', err);
+      console.error('Custom PDS Login error:', err);
       this.errorMessage = err?.message || 'Invalid credentials or PDS unreachable.';
     } finally {
       this.submitting = false;
