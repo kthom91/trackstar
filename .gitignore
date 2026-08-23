@@ -26,7 +26,7 @@ bruno/.env*
 .bru/
 
 # TrackStar local PDS data
-data/
+/data/
 *.db
 *.db-journal
 
