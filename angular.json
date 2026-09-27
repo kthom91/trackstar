@@ -72,11 +72,6 @@
                 "glob": "client-metadata.json",
                 "input": "apps/frontend/src",
                 "output": "."
-              },
-              {
-                "glob": "_redirects",
-                "input": "apps/frontend/src",
-                "output": "."
               }
             ],
             "styles": [
