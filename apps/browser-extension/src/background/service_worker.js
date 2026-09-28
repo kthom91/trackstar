@@ -340,7 +340,7 @@ async function fetchAllMediaLogs() {
     const isOriginal = source !== 'trackstar';
     const isSynced = isOriginal;
 
-    const coverUrl = metadata.coverUrl || metadata.poster_url || metadata.artist_image || metadata.cover_url || '';
+    const coverUrl = val.coverUrl || metadata.coverUrl || metadata.poster_url || metadata.artist_image || metadata.cover_url || '';
     const title = val.title || mediaId.replace(/^[^:]+:/, '').replace(/_/g, ' ') || 'Untitled';
     const author = metadata.author || metadata.creator || metadata.artist || '';
     const venue = metadata.venue || '';
@@ -373,13 +373,19 @@ async function fetchAllMediaLogs() {
 
   // Read stored API keys for on-demand in-memory metadata enrichment
   try {
-    const { tmdbApiKey, lastfmApiKey } = await chrome.storage.local.get(['tmdbApiKey', 'lastfmApiKey']);
-    const resolver = new MetadataResolver(() => ({ tmdbApiKey, lastfmApiKey }));
+    const { tmdbApiKey } = await chrome.storage.local.get(['tmdbApiKey']);
+    const resolver = new MetadataResolver(() => ({ tmdbApiKey }));
 
     for (const item of items) {
       if (!item.coverUrl || !item.author || !item.year) {
         try {
-          const enriched = await resolver.resolveMetadata(item.mediaType, item.title, item.mediaItemId);
+          const lookupTitle = (item.mediaType === 'concert' && (item.metadata?.artist || item.metadata?.creator))
+            ? (item.metadata?.artist || item.metadata?.creator)
+            : item.title;
+          const hint = (item.mediaType === 'concert' && item.metadata?.mbid)
+            ? `mbid:${item.metadata.mbid}`
+            : item.mediaItemId;
+          const enriched = await resolver.resolveMetadata(item.mediaType, lookupTitle, hint);
           if (enriched) {
             if (!item.coverUrl && enriched.coverUrl) {
               item.coverUrl = enriched.coverUrl;
@@ -550,6 +556,7 @@ async function handleBatchIngestPds(records) {
           const venue = (item.venue || '').trim();
           const rawDate = item.completedDate || item.date || item.watchedDate || '';
           const setlistId = item.id || sanitizeKey(`${title}_${rawDate}`);
+          const coverUrl = item.coverUrl || item.poster_url || item.image_url || undefined;
 
           metadata = {
             artist: artist,
@@ -558,6 +565,8 @@ async function handleBatchIngestPds(records) {
             country: item.country || '',
             setlist_url: item.setlistUrl || item.setlist_url || '',
             eventDate: rawDate,
+            coverUrl: coverUrl,
+            poster_url: coverUrl,
             source: source
           };
 
@@ -603,6 +612,7 @@ async function handleBatchIngestPds(records) {
           } catch {}
         }
 
+        const coverUrl = item.coverUrl || metadata.coverUrl || metadata.poster_url || metadata.artist_image || metadata.cover_url || undefined;
         const logRecord = sanitizeAtprotoRecord({
           $type: 'app.trackstar.log',
           mediaType: mediaType,
@@ -613,6 +623,7 @@ async function handleBatchIngestPds(records) {
           loggedAt: loggedIso,
           completedAt: completedIso,
           source: source,
+          coverUrl: coverUrl,
           metadata: metadata,
           metadataJson: metadata
         });
@@ -862,6 +873,9 @@ async function handleSetlistFmSync(userId, apiKey) {
     const itemsPerPage = data.itemsPerPage || 20;
     totalPages = Math.max(1, Math.ceil(totalConcerts / itemsPerPage));
 
+    const { tmdbApiKey } = await chrome.storage.local.get(['tmdbApiKey']);
+    const resolver = new MetadataResolver(() => ({ tmdbApiKey }));
+
     for (const concert of setlists) {
       try {
         const artist = (concert.artist?.name || 'Unknown Artist').trim();
@@ -889,6 +903,17 @@ async function handleSetlistFmSync(userId, apiKey) {
         const mediaKey = sanitizeKey(`setlist_${setlistId}`);
         const logRkey = sanitizeKey(`setlist_log_${setlistId}`);
 
+        let coverUrl = undefined;
+        try {
+          const hint = concert.artist?.mbid ? `mbid:${concert.artist.mbid}` : undefined;
+          const enriched = await resolver.resolveMetadata('concert', artist, hint);
+          if (enriched?.coverUrl) {
+            coverUrl = enriched.coverUrl;
+          }
+        } catch {
+          // Ignore enrichment errors during setlist sync
+        }
+
         const metadata = {
           artist: artist,
           venue: venue,
@@ -898,6 +923,9 @@ async function handleSetlistFmSync(userId, apiKey) {
           setlist_url: url,
           eventDate: rawDate,
           year: year,
+          coverUrl: coverUrl,
+          poster_url: coverUrl,
+          mbid: concert.artist?.mbid,
           source: 'setlist.fm'
         };
 
@@ -914,6 +942,7 @@ async function handleSetlistFmSync(userId, apiKey) {
             completedAt: isoDate || new Date().toISOString(),
             loggedAt: new Date().toISOString(),
             source: 'setlist.fm',
+            coverUrl: coverUrl,
             metadata: metadata,
             metadataJson: metadata
           })

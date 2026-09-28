@@ -170,12 +170,13 @@ export class WantToConsumeComponent implements OnInit {
   async markCompleted(item: PdsUserLog) {
     try {
       await this.repo.createLog({
-        mediaType: item.mediaItem?.mediaType || 'book',
-        title: item.mediaItem?.title || '',
+        mediaType: item.mediaItem?.mediaType || item.mediaType || 'book',
+        title: item.mediaItem?.title || item.title || '',
         status: 'completed',
         completedAt: new Date().toISOString(),
         mediaItemId: item.mediaItemId,
-        metadataJson: item.mediaItem?.metadataJson
+        coverUrl: item.coverUrl,
+        metadataJson: item.mediaItem?.metadataJson || item.metadataJson
       });
     } catch (err) {
       console.error('Failed to update status to completed on PDS:', err);

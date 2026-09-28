@@ -111,6 +111,7 @@ export class SetlistFmProvider implements IntegrationProvider {
         year,
         setlist_url: setlistUrl,
         tour: event.tour?.name,
+        mbid: event.artist?.mbid,
         source: 'setlistfm'
       }
     };

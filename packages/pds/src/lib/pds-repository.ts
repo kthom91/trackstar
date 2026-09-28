@@ -17,6 +17,7 @@ export class PdsRepositoryCore {
       const val = r.value || {};
       const rkey = r.uri.split('/').pop() || '';
       const metadata = val.metadata || val.metadataJson || {};
+      const coverUrl = val.coverUrl || metadata.coverUrl || metadata.cover_url || metadata.poster_url || metadata.band_image;
 
       return {
         id: rkey,
@@ -31,6 +32,7 @@ export class PdsRepositoryCore {
         completedAt: val.completedAt,
         startedAt: val.startedAt,
         source: val.source || 'trackstar',
+        coverUrl: coverUrl,
         metadata: metadata,
         metadataJson: metadata,
         mediaItemId: val.mediaItemId || rkey
@@ -91,6 +93,7 @@ export class PdsRepositoryCore {
       completedAt: payload.completedAt || (payload.status === 'completed' ? now : undefined),
       startedAt: payload.startedAt,
       source: source,
+      coverUrl: payload.coverUrl || undefined,
       metadata: metadata,
       metadataJson: metadata,
       mediaItemId: payload.mediaItemId

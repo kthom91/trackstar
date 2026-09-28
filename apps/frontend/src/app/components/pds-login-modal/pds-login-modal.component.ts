@@ -70,20 +70,6 @@ import { DirectMetadataService } from '../../services/direct-metadata.service';
             <p class="text-[10px] font-mono text-[#9a8f7e]">Stored locally in your browser to enrich movie cover art.</p>
           </div>
 
-          <!-- Last.fm API Key Settings -->
-          <div class="space-y-1.5 pt-2 border-t border-[rgba(14,14,14,0.14)]">
-            <div class="flex items-center justify-between font-mono text-xs">
-              <label class="font-bold uppercase text-[10px] text-[#3d3830] tracking-wider">Last.fm API Key (Optional)</label>
-              <a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener noreferrer" class="text-[10px] text-[#0e0e0e] hover:underline">Get Key ↗</a>
-            </div>
-            <input type="text" 
-                   [(ngModel)]="lastfmKey" 
-                   (ngModelChange)="onLastfmKeyChange()"
-                   placeholder="Enter your free Last.fm API key for band pictures" 
-                   class="w-full bg-white border border-[rgba(14,14,14,0.24)] rounded-xl px-3.5 py-2 text-xs text-[#0e0e0e] font-mono placeholder-[#9a8f7e] focus:outline-none focus:border-[#0e0e0e]">
-            <p class="text-[10px] font-mono text-[#9a8f7e]">Stored locally in your browser to enrich concert and band artwork.</p>
-          </div>
-
           <div class="flex items-center justify-between pt-4 border-t border-[rgba(14,14,14,0.14)] gap-2 font-mono text-xs">
             <button (click)="syncPds()" [disabled]="repo.loading()"
                     class="px-3.5 py-2 bg-[#0e0e0e] hover:bg-neutral-800 text-[#f0ede6] rounded-xl font-semibold shadow-sm transition-all">
@@ -256,7 +242,6 @@ export class PdsLoginModalComponent {
   password = '';
 
   tmdbKey = this.metadata.getTmdbApiKey();
-  lastfmKey = this.metadata.getLastfmApiKey();
   submitting = false;
   errorMessage: string | null = null;
 
@@ -268,13 +253,6 @@ export class PdsLoginModalComponent {
   onTmdbKeyChange() {
     this.metadata.setTmdbApiKey(this.tmdbKey);
     if (this.tmdbKey.trim()) {
-      this.repo.enrichMissingMetadata();
-    }
-  }
-
-  onLastfmKeyChange() {
-    this.metadata.setLastfmApiKey(this.lastfmKey);
-    if (this.lastfmKey.trim()) {
       this.repo.enrichMissingMetadata();
     }
   }

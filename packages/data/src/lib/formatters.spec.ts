@@ -15,6 +15,7 @@ describe('Media Formatters', () => {
 
   it('resolves direct coverUrl and ISBN Open Library fallback', () => {
     expect(getCoverUrl({ metadataJson: { coverUrl: 'https://example.com/poster.jpg' } })).toBe('https://example.com/poster.jpg');
+    expect(getCoverUrl({ metadataJson: { band_image: 'https://example.com/band.jpg' } })).toBe('https://example.com/band.jpg');
     expect(getCoverUrl({ metadataJson: { isbn: '9780593135204' } })).toBe('https://covers.openlibrary.org/b/isbn/9780593135204-M.jpg');
     expect(getCoverUrl({ id: 'isbn:0593135202', metadataJson: {} })).toBe('https://covers.openlibrary.org/b/isbn/0593135202-M.jpg');
   });
