@@ -176,7 +176,8 @@ export class MetadataResolver {
     let coverUrl: string | undefined = undefined;
     let description: string | undefined = undefined;
     let genres: string[] | undefined = undefined;
-    let externalUrl: string | undefined = undefined;
+    let wikipediaUrl: string | undefined = undefined;
+    let wikidataUrl: string | undefined = undefined;
 
     const headers = {
       'Api-User-Agent': 'TrackStar/1.0 (https://github.com/kthom91/trackstar; contact@trackstar.local)',
@@ -192,8 +193,8 @@ export class MetadataResolver {
     // Tier 1: Direct Wikidata query by MusicBrainz Artist ID (P434)
     if (mbid) {
       try {
-        const wikidataUrl = `https://www.wikidata.org/w/api.php?action=query&generator=search&gsrsearch=haswbstatement:P434=${encodeURIComponent(mbid)}&prop=pageimages|description&pithumbsize=600&format=json&origin=*`;
-        const res = await fetch(wikidataUrl, { headers });
+        const wikidataUrlQuery = `https://www.wikidata.org/w/api.php?action=query&generator=search&gsrsearch=haswbstatement:P434=${encodeURIComponent(mbid)}&prop=pageimages|description&pithumbsize=600&format=json&origin=*`;
+        const res = await fetch(wikidataUrlQuery, { headers });
         if (res.ok) {
           const data = await res.json();
           const pages: any[] = Object.values(data?.query?.pages || {});
@@ -201,7 +202,7 @@ export class MetadataResolver {
           if (match) {
             coverUrl = match.thumbnail.source;
             if (match.description) description = match.description;
-            if (match.title) externalUrl = `https://www.wikidata.org/wiki/${match.title}`;
+            if (match.title) wikidataUrl = `https://www.wikidata.org/wiki/${match.title}`;
           }
         }
       } catch (err) {
@@ -228,7 +229,7 @@ export class MetadataResolver {
           description = match.description || match.extract;
           if (match.title) {
             creator = match.title.replace(/\s*\(.*?\)$/, '').trim();
-            externalUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(match.title.replace(/\s+/g, '_'))}`;
+            wikipediaUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(match.title.replace(/\s+/g, '_'))}`;
           }
         }
       } catch (err) {
@@ -242,7 +243,8 @@ export class MetadataResolver {
       poster_url: coverUrl,
       description: description,
       genres: genres,
-      externalUrl: externalUrl
+      wikipedia_url: wikipediaUrl,
+      wikidata_url: wikidataUrl
     };
   }
 }

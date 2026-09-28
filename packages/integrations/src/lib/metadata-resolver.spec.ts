@@ -51,7 +51,8 @@ describe('MetadataResolver', () => {
     expect(result.coverUrl).toBe('https://upload.wikimedia.org/wikipedia/commons/thumb/radiohead.jpg/600px-radiohead.jpg');
     expect(result.poster_url).toBe('https://upload.wikimedia.org/wikipedia/commons/thumb/radiohead.jpg/600px-radiohead.jpg');
     expect(result.description).toBe('English rock band');
-    expect(result.externalUrl).toBe('https://en.wikipedia.org/wiki/Radiohead');
+    expect(result.wikipedia_url).toBe('https://en.wikipedia.org/wiki/Radiohead');
+    expect(result.externalUrl).toBeUndefined();
   });
 
   it('resolves concert band image directly from Wikidata via MBID (P434)', async () => {
@@ -90,7 +91,8 @@ describe('MetadataResolver', () => {
     expect(result.creator).toBe('Coldplay');
     expect(result.coverUrl).toBe('https://upload.wikimedia.org/wikipedia/commons/thumb/coldplay.jpg/600px-coldplay.jpg');
     expect(result.description).toBe('British rock band');
-    expect(result.externalUrl).toBe('https://www.wikidata.org/wiki/Q12345');
+    expect(result.wikidata_url).toBe('https://www.wikidata.org/wiki/Q12345');
+    expect(result.externalUrl).toBeUndefined();
   });
 
   it('falls back to Wikipedia search if Wikidata MBID lookup yields no image', async () => {

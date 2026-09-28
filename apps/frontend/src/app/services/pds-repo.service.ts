@@ -139,6 +139,15 @@ export class PdsRepoService {
               ...metadata
             };
 
+            if (mediaType === 'concert' && mergedMetadata['externalUrl'] && !mergedMetadata['externalUrl'].includes('setlist.fm')) {
+              if (mergedMetadata['externalUrl'].includes('wikipedia.org')) {
+                mergedMetadata['wikipedia_url'] = mergedMetadata['externalUrl'];
+              } else if (mergedMetadata['externalUrl'].includes('wikidata.org')) {
+                mergedMetadata['wikidata_url'] = mergedMetadata['externalUrl'];
+              }
+              delete mergedMetadata['externalUrl'];
+            }
+
             const mediaItem: PdsMediaItem = {
               id: rawId,
               mediaType: mediaType,
@@ -244,6 +253,15 @@ export class PdsRepoService {
           }
           if (enriched.year && !meta['year']) {
             updatedMeta['year'] = enriched.year;
+          }
+
+          if (log.mediaType === 'concert' && updatedMeta['externalUrl'] && !updatedMeta['externalUrl'].includes('setlist.fm')) {
+            if (updatedMeta['externalUrl'].includes('wikipedia.org')) {
+              updatedMeta['wikipedia_url'] = updatedMeta['externalUrl'];
+            } else if (updatedMeta['externalUrl'].includes('wikidata.org')) {
+              updatedMeta['wikidata_url'] = updatedMeta['externalUrl'];
+            }
+            delete updatedMeta['externalUrl'];
           }
 
           log.coverUrl = enriched.coverUrl;

@@ -129,6 +129,7 @@ export class MediaTableComponent {
       title: log.mediaItem?.title,
       source: log.source,
       mediaType: log.mediaItem?.mediaType,
+      externalId: log.mediaItemId || log.id,
       metadata: getParsedMetadata(log)
     });
   }

@@ -358,6 +358,7 @@ async function fetchAllMediaLogs() {
       city: city,
       year: year,
       letterboxdUrl: metadata.letterboxd_url || '',
+      setlistUrl: metadata.setlist_url || metadata.setlistUrl || (metadata.url && metadata.url.includes('setlist.fm') ? metadata.url : '') || '',
       coverUrl: coverUrl,
       status: val.status || 'completed',
       rating: val.rating || null,

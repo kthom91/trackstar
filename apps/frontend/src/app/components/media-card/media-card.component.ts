@@ -127,6 +127,7 @@ export class MediaCardComponent {
       title: this.log.mediaItem?.title,
       source: this.log.source,
       mediaType: this.log.mediaItem?.mediaType,
+      externalId: this.log.mediaItemId || this.log.id,
       metadata: getParsedMetadata(this.log)
     });
   }
