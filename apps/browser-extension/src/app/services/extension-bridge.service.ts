@@ -426,6 +426,13 @@ export class ExtensionBridgeService {
   }
 
   getSetlistConcertUrl(item: ExtensionMediaItem): string {
+    if (item.setlistUrl && item.setlistUrl.includes('setlist.fm')) {
+      return item.setlistUrl;
+    }
+    const cleanId = (item.mediaItemId || item.rkey || '').replace(/^(setlistfm|setlist):/i, '').trim();
+    if (cleanId && /^[a-f0-9]+$/i.test(cleanId)) {
+      return `https://www.setlist.fm/setlist/${cleanId}.html`;
+    }
     const query = `${item.title || ''} ${item.venue || ''} ${item.city || ''}`.trim();
     return `https://www.setlist.fm/search?query=${encodeURIComponent(query)}`;
   }

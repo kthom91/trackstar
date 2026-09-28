@@ -87,9 +87,6 @@ import { DirectMetadataService, AutocompleteItem } from '../../services/direct-m
               <span *ngIf="selectedType === 'movie' && !hasTmdbKey" class="text-[10px] font-mono text-[#9a8f7e]">
                 (Add TMDB key in settings for lookup)
               </span>
-              <span *ngIf="selectedType === 'concert' && !hasLastfmKey" class="text-[10px] font-mono text-[#9a8f7e]">
-                (Add Last.fm key in settings for lookup)
-              </span>
             </div>
 
             <!-- Input Container -->
@@ -298,10 +295,6 @@ export class LogModalComponent implements OnInit, OnDestroy {
     return Boolean(this.metadata.getTmdbApiKey());
   }
 
-  get hasLastfmKey(): boolean {
-    return Boolean(this.metadata.getLastfmApiKey());
-  }
-
   getTodayDateString(): string {
     const d = new Date();
     const year = d.getFullYear();
@@ -417,6 +410,7 @@ export class LogModalComponent implements OnInit, OnDestroy {
         rating: this.rating || undefined,
         review: this.review.trim() || undefined,
         completedAt: completedAt,
+        coverUrl: this.selectedSuggestion?.coverUrl,
         mediaItemId: this.selectedSuggestion?.id,
         metadataJson: this.selectedSuggestion?.metadataJson,
         source: 'trackstar'

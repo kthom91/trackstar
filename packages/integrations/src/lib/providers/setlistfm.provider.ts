@@ -53,15 +53,37 @@ export class SetlistFmProvider implements IntegrationProvider {
 
   getItemUrl(context: ItemUrlContext): string {
     const meta = context.metadata || {};
-    if (context.externalUrl) return context.externalUrl;
-    if (meta['setlist_url']) return meta['setlist_url'];
-    if (meta['url'] && typeof meta['url'] === 'string' && meta['url'].includes('setlist.fm')) return meta['url'];
-    if (context.externalId && /^[a-f0-9]+$/i.test(context.externalId.trim())) {
-      return `https://www.setlist.fm/setlist/${context.externalId.trim()}.html`;
+
+    // 1. Explicit setlist URL in metadata
+    const setlistUrl = meta['setlist_url'] || meta['setlistUrl'];
+    if (typeof setlistUrl === 'string' && setlistUrl.includes('setlist.fm')) {
+      return setlistUrl;
     }
 
-    const artist = meta['artist'] || context.title?.split(' at ')[0]?.split(' @ ')[0] || context.title || '';
-    return `https://www.setlist.fm/search?query=${encodeURIComponent(artist.trim())}`;
+    // 2. Direct externalUrl or meta.url only if it points to setlist.fm
+    if (typeof context.externalUrl === 'string' && context.externalUrl.includes('setlist.fm')) {
+      return context.externalUrl;
+    }
+    if (typeof meta['url'] === 'string' && meta['url'].includes('setlist.fm')) {
+      return meta['url'];
+    }
+    if (typeof meta['externalUrl'] === 'string' && meta['externalUrl'].includes('setlist.fm')) {
+      return meta['externalUrl'];
+    }
+
+    // 3. Setlist ID from externalId or metadata
+    const rawId = (context.externalId || meta['setlistId'] || meta['id'] || '').toString().trim();
+    const cleanId = rawId.replace(/^(setlistfm|setlist):/i, '').trim();
+    if (cleanId && /^[a-f0-9]+$/i.test(cleanId)) {
+      return `https://www.setlist.fm/setlist/${cleanId}.html`;
+    }
+
+    // 4. Fallback: Search Setlist.fm by artist name or concert title
+    const rawArtist = meta['artist'] || meta['creator'] || '';
+    const artist = rawArtist || context.title?.split(' at ')[0]?.split(' @ ')[0]?.split(' - ')[0] || context.title || '';
+    const cleanArtist = artist.replace(/\s*\(\d{4}\)$/, '').trim();
+
+    return `https://www.setlist.fm/search?query=${encodeURIComponent(cleanArtist)}`;
   }
 
   /**
@@ -111,6 +133,7 @@ export class SetlistFmProvider implements IntegrationProvider {
         year,
         setlist_url: setlistUrl,
         tour: event.tour?.name,
+        mbid: event.artist?.mbid,
         source: 'setlistfm'
       }
     };
