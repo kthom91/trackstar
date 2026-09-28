@@ -139,6 +139,15 @@ export class PdsRepoService {
               ...metadata
             };
 
+            if (mediaType === 'concert' && mergedMetadata['externalUrl'] && !mergedMetadata['externalUrl'].includes('setlist.fm')) {
+              if (mergedMetadata['externalUrl'].includes('wikipedia.org')) {
+                mergedMetadata['wikipedia_url'] = mergedMetadata['externalUrl'];
+              } else if (mergedMetadata['externalUrl'].includes('wikidata.org')) {
+                mergedMetadata['wikidata_url'] = mergedMetadata['externalUrl'];
+              }
+              delete mergedMetadata['externalUrl'];
+            }
+
             const mediaItem: PdsMediaItem = {
               id: rawId,
               mediaType: mediaType,
@@ -148,6 +157,8 @@ export class PdsRepoService {
               atUri: rec.uri,
               rkey: rkey
             };
+
+            const coverUrl = val.coverUrl || mergedMetadata['coverUrl'] || mergedMetadata['cover_url'] || mergedMetadata['poster_url'] || mergedMetadata['band_image'];
 
             const log: PdsUserLog = {
               id: rkey,
@@ -164,6 +175,7 @@ export class PdsRepoService {
               startedAt: val.startedAt,
               source: normalizedSource,
               sourceDisplayName: getSourceDisplayName(normalizedSource, mediaType),
+              coverUrl: coverUrl,
               metadata: mergedMetadata,
               metadataJson: mergedMetadata,
               mediaItem: mediaItem
@@ -205,8 +217,9 @@ export class PdsRepoService {
     let hasUpdates = false;
 
     const toEnrich = targetItems.filter(log => {
+      if (log.coverUrl) return false;
       const meta = log.metadata || log.metadataJson || {};
-      const hasCover = meta['coverUrl'] || meta['cover_url'] || meta['poster_url'] || meta['posterUrl'] || meta['image_url'];
+      const hasCover = meta['coverUrl'] || meta['cover_url'] || meta['poster_url'] || meta['posterUrl'] || meta['image_url'] || meta['artist_image'] || meta['band_image'];
       if (hasCover) return false;
       const key = log.id || log.mediaItemId || '';
       if (key && this.enrichedIds.has(key)) return false;
@@ -219,7 +232,13 @@ export class PdsRepoService {
       const meta = { ...(log.metadata || log.metadataJson || {}) };
 
       try {
-        const enriched = await this.metadataService.resolveMetadata(log.mediaType, log.title, log.mediaItemId || log.id);
+        const lookupTitle = (log.mediaType === 'concert' && (meta['artist'] || meta['creator']))
+          ? (meta['artist'] || meta['creator'])
+          : log.title;
+        const hint = (log.mediaType === 'concert' && meta['mbid'])
+          ? `mbid:${meta['mbid']}`
+          : (log.mediaItemId || log.id);
+        const enriched = await this.metadataService.resolveMetadata(log.mediaType, lookupTitle, hint);
         const key = log.id || log.mediaItemId || '';
 
         if (enriched && enriched.coverUrl) {
@@ -236,6 +255,16 @@ export class PdsRepoService {
             updatedMeta['year'] = enriched.year;
           }
 
+          if (log.mediaType === 'concert' && updatedMeta['externalUrl'] && !updatedMeta['externalUrl'].includes('setlist.fm')) {
+            if (updatedMeta['externalUrl'].includes('wikipedia.org')) {
+              updatedMeta['wikipedia_url'] = updatedMeta['externalUrl'];
+            } else if (updatedMeta['externalUrl'].includes('wikidata.org')) {
+              updatedMeta['wikidata_url'] = updatedMeta['externalUrl'];
+            }
+            delete updatedMeta['externalUrl'];
+          }
+
+          log.coverUrl = enriched.coverUrl;
           log.metadata = updatedMeta;
           log.metadataJson = updatedMeta;
           if (log.mediaItem) {
@@ -244,6 +273,33 @@ export class PdsRepoService {
 
           if (key) this.enrichedIds.add(key);
           hasUpdates = true;
+
+          // Asynchronously persist the enriched coverUrl and metadata back to PDS
+          if (this.auth.isAuthenticated() && log.id) {
+            this.executeWithAuth(async (agent, repo) => {
+              await agent.com.atproto.repo.putRecord({
+                collection: 'app.trackstar.log',
+                repo: repo,
+                rkey: log.id,
+                record: sanitizeAtprotoRecord({
+                  $type: 'app.trackstar.log',
+                  mediaType: log.mediaType,
+                  title: log.title,
+                  status: log.status,
+                  rating: sanitizeRating(log.rating),
+                  review: log.review,
+                  loggedAt: log.loggedAt,
+                  completedAt: log.completedAt,
+                  startedAt: log.startedAt,
+                  source: log.source,
+                  coverUrl: enriched.coverUrl,
+                  metadata: updatedMeta,
+                  metadataJson: updatedMeta,
+                  mediaItemId: log.mediaItemId
+                })
+              });
+            }).catch(err => console.warn('Failed to persist enriched image to PDS:', err));
+          }
         } else if (key && Object.keys(enriched || {}).length > 0) {
           if (key) this.enrichedIds.add(key);
         }
@@ -278,6 +334,7 @@ export class PdsRepoService {
     startedAt?: string;
     loggedAt?: string;
     source?: string;
+    coverUrl?: string;
     metadata?: Record<string, any>;
     metadataJson?: Record<string, any>;
   }): Promise<PdsUserLog> {
@@ -302,6 +359,7 @@ export class PdsRepoService {
         completedAt: payload.completedAt || (payload.status === 'completed' ? loggedAt : undefined),
         startedAt: payload.startedAt,
         source: source,
+        coverUrl: payload.coverUrl || undefined,
         metadata: metadata,
         metadataJson: metadata,
         mediaItemId: mediaId
@@ -340,6 +398,7 @@ export class PdsRepoService {
         startedAt: payload.startedAt,
         source: source,
         sourceDisplayName: getSourceDisplayName(source, payload.mediaType),
+        coverUrl: payload.coverUrl,
         metadata: metadata,
         metadataJson: metadata,
         mediaItem: mediaItem

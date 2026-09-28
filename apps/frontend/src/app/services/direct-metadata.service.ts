@@ -2,17 +2,20 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { EnrichedMetadata, AutocompleteItem } from '@trackstar/data';
+import { MetadataResolver } from '@trackstar/integrations';
 
 export type { EnrichedMetadata, AutocompleteItem };
 
 const TMDB_KEY_STORAGE = 'trackstar_tmdb_api_key';
-const LASTFM_KEY_STORAGE = 'trackstar_lastfm_api_key';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DirectMetadataService {
   private http = inject(HttpClient);
+  private resolver = new MetadataResolver(() => ({
+    tmdbApiKey: this.getTmdbApiKey()
+  }));
 
   // TMDB API Key
   getTmdbApiKey(): string {
@@ -24,19 +27,6 @@ export class DirectMetadataService {
       localStorage.setItem(TMDB_KEY_STORAGE, key.trim());
     } else {
       localStorage.removeItem(TMDB_KEY_STORAGE);
-    }
-  }
-
-  // Last.fm API Key
-  getLastfmApiKey(): string {
-    return localStorage.getItem(LASTFM_KEY_STORAGE) || '';
-  }
-
-  setLastfmApiKey(key: string): void {
-    if (key.trim()) {
-      localStorage.setItem(LASTFM_KEY_STORAGE, key.trim());
-    } else {
-      localStorage.removeItem(LASTFM_KEY_STORAGE);
     }
   }
 
@@ -159,68 +149,68 @@ export class DirectMetadataService {
     return clean;
   }
 
-  // Helper to extract high quality image from Last.fm image array
-  private extractLastfmImage(images: any[]): string | undefined {
-    if (!images || !Array.isArray(images) || images.length === 0) return undefined;
-    const preferredSizes = ['mega', 'extralarge', 'large', 'medium', 'small'];
-    for (const size of preferredSizes) {
-      const match = images.find((img: any) => img.size === size && img['#text']);
-      if (match && match['#text']) {
-        const url = match['#text'].trim();
-        if (url && !url.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-          return url;
-        }
-      }
-    }
-    for (const img of images) {
-      if (img && img['#text'] && !img['#text'].includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-        return img['#text'].trim();
-      }
-    }
-    return undefined;
-  }
-
-  // Concerts: Last.fm Artist Autocomplete (with MusicBrainz fallback)
+  // Concerts: MediaWiki Artist Autocomplete (with MusicBrainz fallback)
   async searchConcertsAutocomplete(query: string): Promise<AutocompleteItem[]> {
     const cleanQ = this.extractArtistName(query.trim());
     if (!cleanQ) return [];
 
-    const apiKey = this.getLastfmApiKey();
+    // 1. Search MediaWiki for musical acts with photos
+    try {
+      const MUSIC_TERMS = ['band', 'musician', 'singer', 'music', 'duo', 'trio', 'group', 'rapper', 'orchestra', 'dj', 'rock', 'pop', 'hip hop', 'song', 'composer'];
 
-    // 1. If Last.fm API Key is configured, search Last.fm
-    if (apiKey) {
-      try {
-        const url = `https://ws.audioscrobbler.com/2.0/?method=artist.search&artist=${encodeURIComponent(cleanQ)}&api_key=${apiKey}&format=json&limit=6`;
-        const res: any = await firstValueFrom(this.http.get(url));
+      const fetchWiki = async (q: string) => {
+        const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=6&prop=pageimages|description&pithumbsize=300&format=json&origin=*`;
+        const res: any = await firstValueFrom(this.http.get(url, {
+          headers: { 'Api-User-Agent': 'TrackStar/1.0 (https://github.com/kthom91/trackstar; contact@trackstar.local)' }
+        }));
+        if (!res?.query?.pages) return [];
+        return Object.values(res.query.pages).sort((a: any, b: any) => a.index - b.index);
+      };
 
-        const matches = res?.results?.artistmatches?.artist;
-        if (matches) {
-          const list = Array.isArray(matches) ? matches : [matches];
-          return list.slice(0, 6).map((a: any) => {
-            const cover = this.extractLastfmImage(a.image);
-            const listeners = a.listeners ? `${Number(a.listeners).toLocaleString()} listeners` : 'Artist';
-            return {
-              id: a.mbid ? `mbid:${a.mbid}` : `lastfm:${a.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
-              title: a.name,
-              creator: a.name,
-              coverUrl: cover,
-              description: listeners,
-              mediaType: 'concert' as const,
-              metadataJson: {
-                artist: a.name,
-                creator: a.name,
-                coverUrl: cover,
-                poster_url: cover,
-                listeners: a.listeners,
-                mbid: a.mbid || undefined,
-                lastfm_url: a.url
-              }
-            };
-          });
+      let pages = await fetchWiki(cleanQ);
+      let musicPages = pages.filter((p: any) => {
+        const d = (p.description || '').toLowerCase();
+        const t = (p.title || '').toLowerCase();
+        return MUSIC_TERMS.some(w => d.includes(w) || t.includes(w));
+      });
+
+      if (musicPages.length === 0 && !cleanQ.toLowerCase().includes('band')) {
+        const bandPages = await fetchWiki(`${cleanQ} band`);
+        const found = bandPages.filter((p: any) => {
+          const d = (p.description || '').toLowerCase();
+          const t = (p.title || '').toLowerCase();
+          return MUSIC_TERMS.some(w => d.includes(w) || t.includes(w));
+        });
+        if (found.length > 0) {
+          musicPages = found;
         }
-      } catch (err) {
-        console.warn('Last.fm artist autocomplete search failed, trying MusicBrainz fallback:', err);
       }
+
+      const candidates = musicPages.length > 0 ? musicPages : pages;
+      if (candidates.length > 0) {
+        return candidates.slice(0, 6).map((p: any) => {
+          const cleanName = (p.title || '').replace(/\s*\(.*?\)$/, '').trim();
+          const cover = p.thumbnail?.source;
+          return {
+            id: `concert:${cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+            title: cleanName,
+            creator: cleanName,
+            coverUrl: cover,
+            description: p.description || 'Musical Artist',
+            mediaType: 'concert' as const,
+            metadataJson: {
+              artist: cleanName,
+              creator: cleanName,
+              coverUrl: cover,
+              poster_url: cover,
+              description: p.description,
+              wikipedia_url: `https://en.wikipedia.org/wiki/${encodeURIComponent(p.title.replace(/\s+/g, '_'))}`
+            }
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('Wikipedia concert autocomplete failed, trying fallbacks:', err);
     }
 
     // 2. MusicBrainz Fallback (Free & open artist directory)
@@ -386,54 +376,8 @@ export class DirectMetadataService {
     return {};
   }
 
-  // 3. Concerts: Last.fm Metadata Resolver (Single artist info lookup)
+  // 3. Concerts: MediaWiki (Wikidata & Wikipedia) Metadata Resolver
   async resolveConcertMetadata(title: string, hintId?: string): Promise<EnrichedMetadata> {
-    const cleanArtist = this.extractArtistName(title);
-    if (!cleanArtist) {
-      return { creator: title };
-    }
-
-    const apiKey = this.getLastfmApiKey();
-    if (apiKey) {
-      try {
-        let artistUrl = `https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=${encodeURIComponent(cleanArtist)}&api_key=${apiKey}&format=json&autocorrect=1`;
-        if (hintId && (hintId.startsWith('mbid:') || hintId.startsWith('musicbrainz:'))) {
-          const mbid = hintId.replace(/^(mbid|musicbrainz):/, '').trim();
-          artistUrl = `https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&mbid=${encodeURIComponent(mbid)}&api_key=${apiKey}&format=json`;
-        }
-
-        const res: any = await firstValueFrom(this.http.get(artistUrl));
-        if (res && res.artist) {
-          const artist = res.artist;
-          const coverUrl = this.extractLastfmImage(artist.image);
-
-          let genres: string[] | undefined = undefined;
-          if (artist.tags?.tag) {
-            const tags = Array.isArray(artist.tags.tag) ? artist.tags.tag : [artist.tags.tag];
-            genres = tags.map((t: any) => t.name).filter(Boolean).slice(0, 3);
-          }
-
-          let bioSummary: string | undefined = undefined;
-          if (artist.bio?.summary) {
-            bioSummary = artist.bio.summary.replace(/<a[\s\S]*$/i, '').trim();
-          }
-
-          return {
-            creator: artist.name || cleanArtist,
-            coverUrl: coverUrl,
-            poster_url: coverUrl,
-            description: bioSummary || undefined,
-            genres: genres,
-            externalUrl: artist.url
-          };
-        }
-      } catch (err) {
-        console.warn('Last.fm concert metadata lookup failed:', err);
-      }
-    }
-
-    return {
-      creator: cleanArtist
-    };
+    return this.resolver.resolveConcertMetadata(title, hintId);
   }
 }

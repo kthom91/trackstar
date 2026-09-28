@@ -70,4 +70,34 @@ describe('SetlistFmProvider', () => {
 
     expect(res.total).toBe(1);
   });
+
+  describe('getItemUrl', () => {
+    it('returns setlist_url when present', () => {
+      const url = provider.getItemUrl({
+        title: 'Radiohead at MSG',
+        metadata: {
+          setlist_url: 'https://www.setlist.fm/setlist/radiohead/2018/madison-square-garden-new-york-ny-73ab5209.html',
+          externalUrl: 'https://en.wikipedia.org/wiki/Radiohead'
+        }
+      });
+      expect(url).toBe('https://www.setlist.fm/setlist/radiohead/2018/madison-square-garden-new-york-ny-73ab5209.html');
+    });
+
+    it('rejects externalUrl when not setlist.fm and uses setlist ID', () => {
+      const url = provider.getItemUrl({
+        title: 'Justice at Brooklyn Mirage',
+        externalId: 'setlist:73ab5209',
+        externalUrl: 'https://en.wikipedia.org/wiki/Justice_(band)'
+      });
+      expect(url).toBe('https://www.setlist.fm/setlist/73ab5209.html');
+    });
+
+    it('falls back to Setlist.fm search for artist when no ID or URL exists', () => {
+      const url = provider.getItemUrl({
+        title: 'Phoenix @ Bill Graham Civic Auditorium',
+        externalUrl: 'https://en.wikipedia.org/wiki/Phoenix_(band)'
+      });
+      expect(url).toBe('https://www.setlist.fm/search?query=Phoenix');
+    });
+  });
 });

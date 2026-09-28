@@ -2,7 +2,6 @@ import { EnrichedMetadata, AutocompleteItem } from '@trackstar/data';
 
 export interface MetadataApiKeys {
   tmdbApiKey?: string;
-  lastfmApiKey?: string;
 }
 
 export class MetadataResolver {
@@ -20,26 +19,6 @@ export class MetadataResolver {
       clean = clean.split(/ live at /i)[0].trim();
     }
     return clean;
-  }
-
-  private extractLastfmImage(images: any[]): string | undefined {
-    if (!images || !Array.isArray(images) || images.length === 0) return undefined;
-    const preferredSizes = ['mega', 'extralarge', 'large', 'medium', 'small'];
-    for (const size of preferredSizes) {
-      const match = images.find((img: any) => img.size === size && img['#text']);
-      if (match && match['#text']) {
-        const url = match['#text'].trim();
-        if (url && !url.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-          return url;
-        }
-      }
-    }
-    for (const img of images) {
-      if (img && img['#text'] && !img['#text'].includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-        return img['#text'].trim();
-      }
-    }
-    return undefined;
   }
 
   private cache = new Map<string, EnrichedMetadata>();
@@ -182,58 +161,90 @@ export class MetadataResolver {
     return {};
   }
 
-  // 3. Concerts: Last.fm Metadata Resolver
+  /**
+   * Resolves concert artist metadata and band image.
+   * Tier 1: Direct Wikidata query by MusicBrainz ID (P434) if mbid is provided.
+   * Tier 2: Streamlined Wikipedia search fallback by artist name.
+   */
   async resolveConcertMetadata(title: string, hintId?: string): Promise<EnrichedMetadata> {
     const cleanArtist = this.extractArtistName(title);
     if (!cleanArtist) {
       return { creator: title };
     }
 
-    const keys = this.getKeys();
-    const apiKey = keys.lastfmApiKey;
-    if (apiKey) {
-      try {
-        let artistUrl = `https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=${encodeURIComponent(cleanArtist)}&api_key=${apiKey}&format=json&autocorrect=1`;
-        if (hintId && (hintId.startsWith('mbid:') || hintId.startsWith('musicbrainz:'))) {
-          const mbid = hintId.replace(/^(mbid|musicbrainz):/, '').trim();
-          artistUrl = `https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&mbid=${encodeURIComponent(mbid)}&api_key=${apiKey}&format=json`;
-        }
+    let creator = cleanArtist;
+    let coverUrl: string | undefined = undefined;
+    let description: string | undefined = undefined;
+    let genres: string[] | undefined = undefined;
+    let wikipediaUrl: string | undefined = undefined;
+    let wikidataUrl: string | undefined = undefined;
 
-        const res = await fetch(artistUrl);
+    const headers = {
+      'Api-User-Agent': 'TrackStar/1.0 (https://github.com/kthom91/trackstar; contact@trackstar.local)',
+      'User-Agent': 'TrackStar/1.0 (https://github.com/kthom91/trackstar; contact@trackstar.local)'
+    };
+
+    // Extract MBID if present in hintId
+    let mbid: string | undefined = undefined;
+    if (hintId && (hintId.startsWith('mbid:') || hintId.startsWith('musicbrainz:'))) {
+      mbid = hintId.replace(/^(mbid|musicbrainz):/, '').trim();
+    }
+
+    // Tier 1: Direct Wikidata query by MusicBrainz Artist ID (P434)
+    if (mbid) {
+      try {
+        const wikidataUrlQuery = `https://www.wikidata.org/w/api.php?action=query&generator=search&gsrsearch=haswbstatement:P434=${encodeURIComponent(mbid)}&prop=pageimages|description&pithumbsize=600&format=json&origin=*`;
+        const res = await fetch(wikidataUrlQuery, { headers });
         if (res.ok) {
           const data = await res.json();
-          if (data && data.artist) {
-            const artist = data.artist;
-            const coverUrl = this.extractLastfmImage(artist.image);
-
-            let genres: string[] | undefined = undefined;
-            if (artist.tags?.tag) {
-              const tags = Array.isArray(artist.tags.tag) ? artist.tags.tag : [artist.tags.tag];
-              genres = tags.map((t: any) => t.name).filter(Boolean).slice(0, 3);
-            }
-
-            let bioSummary: string | undefined = undefined;
-            if (artist.bio?.summary) {
-              bioSummary = artist.bio.summary.replace(/<a[\s\S]*$/i, '').trim();
-            }
-
-            return {
-              creator: artist.name || cleanArtist,
-              coverUrl: coverUrl,
-              poster_url: coverUrl,
-              description: bioSummary || undefined,
-              genres: genres,
-              externalUrl: artist.url
-            };
+          const pages: any[] = Object.values(data?.query?.pages || {});
+          const match = pages.find((p: any) => p.thumbnail?.source);
+          if (match) {
+            coverUrl = match.thumbnail.source;
+            if (match.description) description = match.description;
+            if (match.title) wikidataUrl = `https://www.wikidata.org/wiki/${match.title}`;
           }
         }
       } catch (err) {
-        console.warn('Last.fm concert metadata lookup failed:', err);
+        console.warn('Wikidata MBID lookup failed, falling back to Wikipedia name search:', err);
+      }
+    }
+
+    // Tier 2: Streamlined Wikipedia search fallback by artist name
+    if (!coverUrl) {
+      try {
+        const searchWiki = async (q: string) => {
+          const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=3&prop=pageimages|description|extracts&exintro=1&explaintext=1&exsentences=2&pithumbsize=600&format=json&origin=*`;
+          const res = await fetch(url, { headers });
+          if (!res.ok) return null;
+          const data = await res.json();
+          const pages: any[] = Object.values(data?.query?.pages || {}).sort((a: any, b: any) => a.index - b.index);
+          return pages.find((p: any) => p.thumbnail?.source) || null;
+        };
+
+        // Try '${cleanArtist} band' first to resolve ambiguous acts (e.g. Justice, Phoenix), then direct '${cleanArtist}'
+        const match = (await searchWiki(`${cleanArtist} band`)) || (await searchWiki(cleanArtist));
+        if (match) {
+          coverUrl = match.thumbnail?.source;
+          description = match.description || match.extract;
+          if (match.title) {
+            creator = match.title.replace(/\s*\(.*?\)$/, '').trim();
+            wikipediaUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(match.title.replace(/\s+/g, '_'))}`;
+          }
+        }
+      } catch (err) {
+        console.warn('Wikipedia artist lookup failed:', err);
       }
     }
 
     return {
-      creator: cleanArtist
+      creator: creator,
+      coverUrl: coverUrl,
+      poster_url: coverUrl,
+      description: description,
+      genres: genres,
+      wikipedia_url: wikipediaUrl,
+      wikidata_url: wikidataUrl
     };
   }
 }
