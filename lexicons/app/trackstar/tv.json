@@ -1,0 +1,29 @@
+{
+  "lexicon": 1,
+  "id": "app.trackstar.tv",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A user's logged TV show.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["title", "status", "loggedAt"],
+        "properties": {
+          "title": { "type": "string" },
+          "creator": { "type": "string" },
+          "firstAirYear": { "type": "integer" },
+          "posterUrl": { "type": "string", "format": "uri" },
+          "status": { "type": "string", "knownValues": ["want_to_consume", "consuming", "completed", "dropped"] },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "review": { "type": "string" },
+          "loggedAt": { "type": "string", "format": "datetime" },
+          "completedAt": { "type": "string", "format": "datetime" },
+          "source": { "type": "string" },
+          "sourceUrl": { "type": "string", "format": "uri" },
+          "tmdbId": { "type": "string" }
+        }
+      }
+    }
+  }
+}

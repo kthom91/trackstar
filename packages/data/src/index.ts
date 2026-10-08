@@ -4,3 +4,4 @@ export * from './lib/metadata.models';
 export * from './lib/extension.models';
 export * from './lib/formatters';
 
+export * from './lib/registry.models';
