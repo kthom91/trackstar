@@ -72,6 +72,11 @@
                 "glob": "client-metadata.json",
                 "input": "apps/frontend/src",
                 "output": "."
+              },
+              {
+                "glob": "manifest.webmanifest",
+                "input": "apps/frontend/src",
+                "output": "."
               }
             ],
             "styles": [
@@ -93,7 +98,8 @@
                   "maximumError": "8kb"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "serviceWorker": "apps/frontend/ngsw-config.json"
             },
             "development": {
               "optimization": false,
@@ -107,7 +113,8 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "host": "0.0.0.0",
-            "port": 4200
+            "port": 4200,
+            "ssl": true
           },
           "configurations": {
             "production": {
