@@ -55,8 +55,8 @@ import { MediaTableComponent } from '../../components/media-table/media-table.co
         <div class="w-8 h-8 border-2 border-[rgba(14,14,14,0.14)] border-t-[#0e0e0e] rounded-full animate-spin"></div>
       </div>
 
-      <!-- Empty State -->
-      <div *ngIf="!repo.loading() && filteredWantToConsume.length === 0" class="bg-[#faf7f2] rounded-2xl p-12 text-center border border-[rgba(14,14,14,0.24)] max-w-lg mx-auto my-8 shadow-sm">
+      <!-- Empty State: Genuinely No Planned Media -->
+      <div *ngIf="!repo.loading() && countTotalWantToConsume() === 0" class="bg-[#faf7f2] rounded-2xl p-12 text-center border border-[rgba(14,14,14,0.24)] max-w-lg mx-auto my-8 shadow-sm">
         <div class="w-12 h-12 bg-[#0e0e0e]/5 rounded-full flex items-center justify-center mx-auto mb-3 text-[#0e0e0e] font-bold text-lg">
           ★
         </div>
@@ -64,8 +64,22 @@ import { MediaTableComponent } from '../../components/media-table/media-table.co
         <p class="text-[#9a8f7e] font-mono text-xs mb-4">
           Add books, movies, or concerts with status "Want to Consume" to build your backlog.
         </p>
-        <button (click)="openLogModal()" class="px-4 py-2 bg-[#0e0e0e] text-[#f0ede6] rounded-xl text-xs font-mono font-semibold shadow-sm hover:bg-neutral-800 transition-all">
+        <button (click)="openLogModal()" class="px-4 py-2 bg-[#0e0e0e] text-[#f0ede6] rounded-xl text-xs font-mono font-semibold shadow-sm hover:bg-neutral-800 transition-all cursor-pointer">
           + Log Planned Media
+        </button>
+      </div>
+
+      <!-- Filter Empty State: Planned Media Exists But Filtered Out -->
+      <div *ngIf="!repo.loading() && countTotalWantToConsume() > 0 && filteredWantToConsume.length === 0" class="bg-[#faf7f2] rounded-2xl p-10 text-center border border-[rgba(14,14,14,0.24)] max-w-lg mx-auto my-8 shadow-sm">
+        <div class="w-10 h-10 bg-[#0e0e0e]/5 rounded-full flex items-center justify-center mx-auto mb-3 text-[#9a8f7e] font-mono text-sm">
+          ∅
+        </div>
+        <h3 class="text-base font-serif font-bold text-[#0e0e0e] mb-1">No Matching Items Found</h3>
+        <p class="text-[#9a8f7e] font-mono text-xs mb-4">
+          No backlog items matched your current type filter or search query.
+        </p>
+        <button (click)="resetFilters()" class="px-4 py-2 bg-[#0e0e0e] text-[#f0ede6] rounded-xl text-xs font-mono font-semibold shadow-sm hover:bg-neutral-800 transition-all cursor-pointer">
+          Reset Filters
         </button>
       </div>
 
@@ -163,6 +177,16 @@ export class WantToConsumeComponent implements OnInit {
     this.modal.openPdsModal();
   }
 
+  countTotalWantToConsume(): number {
+    return this.repo.logs().filter(l => l.status === 'want_to_consume').length;
+  }
+
+  resetFilters(): void {
+    this.selectedTypes = { book: true, movie: true, concert: true };
+    this.searchQuery = '';
+    this.onFilterChange();
+  }
+
   openLogModal(): void {
     this.modal.openLogModal();
   }
@@ -170,12 +194,13 @@ export class WantToConsumeComponent implements OnInit {
   async markCompleted(item: PdsUserLog) {
     try {
       await this.repo.createLog({
-        mediaType: item.mediaItem?.mediaType || 'book',
-        title: item.mediaItem?.title || '',
+        mediaType: item.mediaItem?.mediaType || item.mediaType || 'book',
+        title: item.mediaItem?.title || item.title || '',
         status: 'completed',
         completedAt: new Date().toISOString(),
         mediaItemId: item.mediaItemId,
-        metadataJson: item.mediaItem?.metadataJson
+        coverUrl: item.coverUrl,
+        metadataJson: item.mediaItem?.metadataJson || item.metadataJson
       });
     } catch (err) {
       console.error('Failed to update status to completed on PDS:', err);

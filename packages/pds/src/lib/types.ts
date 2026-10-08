@@ -43,6 +43,7 @@ export interface PdsUserLog {
   startedAt?: string;
   source?: string;
   sourceDisplayName?: string;
+  coverUrl?: string;
   metadata?: Record<string, any>;
   metadataJson?: Record<string, any>;
   mediaItemId?: string;
@@ -59,6 +60,7 @@ export interface CreateLogPayload {
   startedAt?: string;
   loggedAt?: string;
   source?: string;
+  coverUrl?: string;
   metadata?: Record<string, any>;
   metadataJson?: Record<string, any>;
   mediaItemId?: string;

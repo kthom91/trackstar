@@ -281,6 +281,7 @@ export class ImportersComponent {
           completedAt: entry.completedAt,
           loggedAt: entry.loggedAt,
           source: entry.source,
+          coverUrl: entry.metadata?.coverUrl || entry.metadata?.poster_url || entry.metadata?.cover_url,
           metadataJson: entry.metadata
         });
       } catch (e) {

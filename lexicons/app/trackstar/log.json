@@ -53,6 +53,11 @@
             "type": "string",
             "description": "Originating source or integration provider (e.g. trackstar, letterboxd, storygraph, setlistfm)."
           },
+          "coverUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Direct URL to artwork, poster, or band cover image."
+          },
           "metadata": {
             "type": "unknown",
             "description": "Rich media metadata (author, director, year, coverUrl/poster_url, venue, city, identifiers, external URLs)."

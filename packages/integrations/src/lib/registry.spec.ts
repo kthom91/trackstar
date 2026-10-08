@@ -98,6 +98,48 @@ describe('IntegrationRegistry', () => {
       expect(url).toBe('https://www.setlist.fm/setlist/3bd6a8b4.html');
     });
 
+    it('resolves Setlist.fm concert URL from setlist_url even if metadata contains Wikipedia externalUrl', () => {
+      const url = registry.getItemExternalUrl({
+        title: 'Justice at Brooklyn Mirage',
+        source: 'setlist.fm',
+        mediaType: 'concert',
+        metadata: {
+          setlist_url: 'https://www.setlist.fm/setlist/justice/2024/the-brooklyn-mirage-brooklyn-ny-73ab5209.html',
+          externalUrl: 'https://en.wikipedia.org/wiki/Justice_(band)',
+          wikipedia_url: 'https://en.wikipedia.org/wiki/Justice_(band)'
+        }
+      });
+      expect(url).toBe('https://www.setlist.fm/setlist/justice/2024/the-brooklyn-mirage-brooklyn-ny-73ab5209.html');
+    });
+
+    it('resolves Setlist.fm concert URL with prefixed externalId and ignores Wikipedia externalUrl', () => {
+      const url = registry.getItemExternalUrl({
+        title: 'The National at MSG',
+        source: 'setlistfm',
+        mediaType: 'concert',
+        externalId: 'setlist:3bd6a8b4',
+        externalUrl: 'https://en.wikipedia.org/wiki/The_National_(band)'
+      });
+      expect(url).toBe('https://www.setlist.fm/setlist/3bd6a8b4.html');
+    });
+
+    it('resolves Setlist.fm search for concert even if metadata contains Wikipedia URL', () => {
+      const url = registry.getItemExternalUrl({
+        title: 'Justice at Brooklyn Mirage',
+        mediaType: 'concert',
+        metadata: {
+          artist: 'Justice',
+          externalUrl: 'https://en.wikipedia.org/wiki/Justice_(band)'
+        }
+      });
+      expect(url).toBe('https://www.setlist.fm/search?query=Justice');
+    });
+
+    it('recognizes source "setlist.fm" and routes to SetlistFmProvider', () => {
+      const provider = registry.get('setlist.fm');
+      expect(provider?.id).toBe('setlistfm');
+    });
+
     it('resolves Teal track URL from Spotify ID', () => {
       const url = registry.getItemExternalUrl({
         title: 'Weird Fishes — Radiohead',

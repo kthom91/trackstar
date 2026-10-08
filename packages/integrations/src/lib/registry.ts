@@ -39,7 +39,16 @@ export class IntegrationRegistry {
   }
 
   get(id: string): IntegrationProvider | undefined {
-    return this.providers.get(id);
+    if (!id) return undefined;
+    if (this.providers.has(id)) return this.providers.get(id);
+    const normalized = id.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (this.providers.has(normalized)) return this.providers.get(normalized);
+    if (normalized.startsWith('setlist')) return this.providers.get('setlistfm');
+    if (normalized.startsWith('letterboxd')) return this.providers.get('letterboxd');
+    if (normalized.startsWith('storygraph')) return this.providers.get('storygraph');
+    if (normalized.startsWith('goodreads')) return this.providers.get('goodreads');
+    if (normalized.startsWith('teal')) return this.providers.get('teal');
+    return undefined;
   }
 
   getAll(): IntegrationProvider[] {
@@ -118,17 +127,19 @@ export class IntegrationRegistry {
     const title = item.title || '';
     const meta = item.metadata || {};
 
-    const externalId = item.externalId || meta['isbn'] || meta['isbn13'] || meta['id'] || meta['musicBrainzId'] || meta['spotifyId'];
+    const externalId = item.externalId || meta['isbn'] || meta['isbn13'] || meta['id'] || meta['setlistId'] || meta['musicBrainzId'] || meta['spotifyId'];
     const externalUrl =
-      item.externalUrl ||
-      meta['url'] ||
-      meta['externalUrl'] ||
-      meta['letterboxd_url'] ||
-      meta['setlist_url'] ||
-      meta['storygraph_url'] ||
-      meta['goodreads_url'] ||
-      meta['teal_url'] ||
-      meta['link'];
+      (item.mediaType === 'concert' || item.source?.toLowerCase().includes('setlist'))
+        ? (meta['setlist_url'] || meta['setlistUrl'] || (item.externalUrl?.includes('setlist.fm') ? item.externalUrl : undefined) || (meta['url']?.includes('setlist.fm') ? meta['url'] : undefined))
+        : (item.externalUrl ||
+           meta['letterboxd_url'] ||
+           meta['setlist_url'] ||
+           meta['storygraph_url'] ||
+           meta['goodreads_url'] ||
+           meta['teal_url'] ||
+           meta['url'] ||
+           meta['externalUrl'] ||
+           meta['link']);
 
     // 1. Try matching by explicit source
     if (item.source) {
@@ -156,7 +167,21 @@ export class IntegrationRegistry {
       if (url) return url;
     }
 
-    // 3. Last fallback: metadata direct url or hash
+    // 3. For concert media type, ensure it always routes to Setlist.fm search even if no provider matched
+    if (item.mediaType === 'concert' || item.mediaType === 'live') {
+      const setlistProvider = this.get('setlistfm');
+      if (setlistProvider && setlistProvider.getItemUrl) {
+        const url = setlistProvider.getItemUrl({
+          title,
+          externalId,
+          externalUrl,
+          metadata: meta
+        });
+        if (url) return url;
+      }
+    }
+
+    // 4. Last fallback: metadata direct url or hash
     return externalUrl || '#';
   }
 }

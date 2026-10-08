@@ -38,6 +38,7 @@ describe('PdsRepositoryCore', () => {
           rating: 5,
           loggedAt: '2024-06-01T12:00:00Z',
           source: 'letterboxd',
+          coverUrl: 'https://example.com/oppenheimer.jpg',
           metadata: { year: 2023, director: 'Christopher Nolan' }
         }
       }
@@ -54,6 +55,7 @@ describe('PdsRepositoryCore', () => {
     // Newest first
     expect(logs[0].id).toBe('3logNew');
     expect(logs[0].title).toBe('Oppenheimer');
+    expect(logs[0].coverUrl).toBe('https://example.com/oppenheimer.jpg');
     expect(logs[1].id).toBe('3logOld');
     expect(logs[1].title).toBe('Interstellar');
   });
@@ -68,6 +70,7 @@ describe('PdsRepositoryCore', () => {
       mediaType: 'book',
       title: 'Project Hail Mary',
       status: 'want_to_consume',
+      coverUrl: 'https://example.com/hail-mary.jpg',
       metadata: { author: 'Andy Weir' }
     });
 
@@ -81,6 +84,7 @@ describe('PdsRepositoryCore', () => {
         mediaType: 'book',
         title: 'Project Hail Mary',
         status: 'want_to_consume',
+        coverUrl: 'https://example.com/hail-mary.jpg',
         metadata: expect.objectContaining({ author: 'Andy Weir' })
       }),
       'token-123'

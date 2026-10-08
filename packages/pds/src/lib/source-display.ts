@@ -38,7 +38,7 @@ export function getSourceDisplayName(source?: string | null, fallbackMediaType?:
         case 'movie':
             return 'Letterboxd';
         case 'concert':
-            return 'Last.fm';
+            return 'Setlist.fm';
         default:
             return 'External Provider';
     }

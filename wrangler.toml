@@ -1,0 +1,12 @@
+name = "trackstar"
+compatibility_date = "2026-09-27"
+
+[assets]
+directory = "./dist/frontend/browser"
+
+[previews]
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+persist = true

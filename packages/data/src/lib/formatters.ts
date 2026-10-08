@@ -31,6 +31,7 @@ export function getCoverUrl(item?: { id?: string; mediaItemId?: string; metadata
     meta['posterUrl'] ||
     meta['image_url'] ||
     meta['artist_image'] ||
+    meta['band_image'] ||
     (item as any)?.['coverUrl'] ||
     (item as any)?.mediaItem?.['coverUrl'];
 

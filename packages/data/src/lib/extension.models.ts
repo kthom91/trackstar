@@ -11,6 +11,7 @@ export interface ExtensionMediaItem {
   city?: string;
   year?: string | number;
   letterboxdUrl?: string;
+  setlistUrl?: string;
   coverUrl?: string;
   status: string;
   rating?: number | null;

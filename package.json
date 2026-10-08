@@ -9,7 +9,7 @@
   "scripts": {
     "serve": "nx serve frontend",
     "build": "nx build frontend",
-    "build:gh-pages": "nx build frontend --base-href ./",
+    "build:pages": "nx build frontend",
     "build:extension": "nx build browser-extension",
     "test": "vitest run",
     "test:watch": "vitest"
