@@ -79,7 +79,8 @@ export class AppComponent implements OnInit {
         if (this.notification.canShowSystemNotification()) {
           this.notification.showSystemNotification('TrackStar', {
             body: 'Please sign in to your PDS to sync your media log.',
-            icon: '/icon-192.png'
+            icon: '/icon-192.png',
+            badge: '/assets/icons/notification-icon.png'
           });
         } else {
           // Fallback to in-app toast if native notification is not granted
