@@ -21,9 +21,20 @@ export class NotificationService {
     return Notification.permission === 'granted';
   }
 
-  showSystemNotification(title: string, options?: NotificationOptions): void {
+  async showSystemNotification(title: string, options?: NotificationOptions): Promise<void> {
     const window = this.document.defaultView;
     if (window && 'Notification' in window && Notification.permission === 'granted') {
+      if ('serviceWorker' in window.navigator) {
+        try {
+          const registration = await window.navigator.serviceWorker.ready;
+          await registration.showNotification(title, options);
+          return;
+        } catch (err) {
+          console.warn('[NotificationService] ServiceWorker showNotification failed, falling back to Notification API', err);
+        }
+      }
+      
+      // Fallback for browsers without service worker or if the SW call fails
       new Notification(title, options);
     }
   }
