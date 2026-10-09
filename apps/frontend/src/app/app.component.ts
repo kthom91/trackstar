@@ -1,12 +1,13 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { LogModalComponent } from './components/log-modal/log-modal.component';
 import { PdsLoginModalComponent } from './components/pds-login-modal/pds-login-modal.component';
 import { ModalService } from './services/modal.service';
 import { PdsRepositoryService } from './services/pds-repo.service';
 import { PdsAuthService } from './services/pds-auth.service';
+import { NotificationService } from './services/notification.service';
 
 @Component({
   selector: 'app-root',
@@ -59,43 +60,38 @@ export class AppComponent implements OnInit {
   modal = inject(ModalService);
   repo = inject(PdsRepositoryService);
   auth = inject(PdsAuthService);
+  notification = inject(NotificationService);
 
   showToast = false;
 
   ngOnInit() {
-    // Delay check to allow for fast OAuth redirects to resolve
-    setTimeout(() => {
-      const isRedirecting = window.location.search.includes('code=') || window.location.search.includes('state=');
-      
-      if (!this.auth.isAuthenticated() && !isRedirecting) {
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-        
-        if (isStandalone) {
-          if ('Notification' in window) {
-            Notification.requestPermission().then(permission => {
-              if (permission === 'granted') {
-                new Notification('TrackStar', {
-                  body: 'Please sign in to your PDS to sync your media log.',
-                  icon: '/icon-192.png'
-                });
-              }
-            });
-          }
+    if (!this.auth.isAuthenticated()) {
+      if (this.notification.isStandalone()) {
+        if (this.notification.canShowSystemNotification()) {
+          this.notification.showSystemNotification('TrackStar', {
+            body: 'Please sign in to your PDS to sync your media log.',
+            icon: '/icon-192.png'
+          });
         } else {
+          // Fallback to in-app toast if native notification is not granted
           this.showToast = true;
-          setTimeout(() => {
-            this.showToast = false;
-          }, 8000);
         }
+      } else {
+        this.showToast = true;
       }
-    }, 1500);
+    }
   }
 
   closeToast() {
     this.showToast = false;
   }
 
+  private document = inject(DOCUMENT);
+
   onMediaSaved() {
-    window.dispatchEvent(new Event('trackstar:media-saved'));
+    const window = this.document.defaultView;
+    if (window) {
+      window.dispatchEvent(new Event('trackstar:media-saved'));
+    }
   }
 }
