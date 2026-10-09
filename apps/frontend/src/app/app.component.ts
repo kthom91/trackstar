@@ -65,6 +65,15 @@ export class AppComponent implements OnInit {
   showToast = false;
 
   ngOnInit() {
+    const window = this.document.defaultView;
+    if (window) {
+      window.addEventListener('appinstalled', () => {
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      });
+    }
+
     if (!this.auth.isAuthenticated()) {
       if (this.notification.isStandalone()) {
         if (this.notification.canShowSystemNotification()) {
